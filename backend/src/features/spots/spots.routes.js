@@ -1,5 +1,5 @@
 import express from "express";
-import { getAllSpots, getSpotById } from "../controllers/spots.controller.js";
+import { getAllSpots, getSpotById } from "./spots.controller.js";
 
 const router = express.Router();
 

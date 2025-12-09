@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import api from "../utils/apiClient.js";
+import { authAPI } from "../services/api/auth.api.js";
 import Navbar from "../components/Navbar.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 
@@ -18,8 +18,8 @@ const LoginPage = () => {
     setError("");
     setLoading(true);
     try {
-      const res = await api.post("/api/auth/login", form);
-      handleAuthSuccess(res.data);
+      const res = await authAPI.login(form);
+      handleAuthSuccess(res.data?.data || res.data);
       navigate("/");
     } catch (err) {
       setError(err.response?.data?.message || "Login failed");

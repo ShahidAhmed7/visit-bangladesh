@@ -4,7 +4,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import Navbar from "../components/Navbar.jsx";
 import Footer from "../components/Footer.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
-import api from "../utils/apiClient.js";
+import { blogsAPI } from "../services/api/blogs.api.js";
 
 const BlogEditPage = () => {
   const { id } = useParams();
@@ -22,8 +22,8 @@ const BlogEditPage = () => {
     }
     const fetchBlog = async () => {
       try {
-        const res = await api.get(`/api/blogs/${id}`);
-        const blog = res.data;
+        const res = await blogsAPI.getById(id);
+        const blog = res.data?.data || res.data;
         const authorId = blog.author?._id || blog.author?.id;
         if (user.role !== "admin" && String(authorId) !== String(user.id)) {
           navigate(`/blogs/${id}`);
@@ -59,12 +59,15 @@ const BlogEditPage = () => {
         .split(",")
         .map((i) => i.trim())
         .filter(Boolean);
-      await api.put(`/api/blogs/${id}`, { title: form.title.trim(), content: form.content.trim(), images: imagesArr });
+      await blogsAPI.update(id, { title: form.title.trim(), content: form.content.trim(), images: imagesArr });
       toast.success("Story updated");
       navigate(`/blogs/${id}`);
     } catch (err) {
-      setError(err.response?.data?.message || "Failed to update story");
-      toast.error(err.response?.data?.message || "Failed to update story");
+      const apiMessage = err.response?.data?.message;
+      const detail = err.response?.data?.errors?.[0]?.message;
+      const friendly = detail || apiMessage || "Failed to update story";
+      setError(friendly);
+      toast.error(friendly);
     } finally {
       setLoading(false);
     }

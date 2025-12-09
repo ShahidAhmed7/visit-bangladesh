@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import BlogCard from "../components/BlogCard.jsx";
 import BlogHero from "../components/BlogHero.jsx";
 import BlogSidebar from "../components/BlogSidebar.jsx";
@@ -6,7 +7,7 @@ import BlogTabs, { BlogTabsEnum } from "../components/BlogTabs.jsx";
 import Navbar from "../components/Navbar.jsx";
 import Footer from "../components/Footer.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
-import api from "../utils/apiClient.js";
+import { blogsAPI } from "../services/api/blogs.api.js";
 
 const BlogsPage = () => {
   const { user } = useAuth();
@@ -19,8 +20,9 @@ const BlogsPage = () => {
   useEffect(() => {
     const fetchBlogs = async () => {
       try {
-        const res = await api.get("/api/blogs");
-        setBlogs(res.data || []);
+        const res = await blogsAPI.getAll();
+        const data = Array.isArray(res.data?.data) ? res.data.data : Array.isArray(res.data) ? res.data : [];
+        setBlogs(data);
       } catch (err) {
         console.error("Failed to load blogs", err);
       } finally {

@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState } from "react";
-import api from "../utils/apiClient.js";
+import { authAPI } from "../services/api/auth.api.js";
 
 const AuthContext = createContext(null);
 
@@ -21,8 +21,8 @@ export const AuthProvider = ({ children }) => {
         return;
       }
       try {
-        const res = await api.get("/api/auth/me");
-        setUser(normalizeUser(res.data));
+        const res = await authAPI.me();
+        setUser(normalizeUser(res.data?.data || res.data));
       } catch (err) {
         localStorage.removeItem("token");
         setToken(null);

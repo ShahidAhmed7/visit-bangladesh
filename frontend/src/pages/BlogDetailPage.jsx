@@ -3,12 +3,12 @@ import { HiHeart, HiOutlineHeart, HiTrash } from "react-icons/hi";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import Navbar from "../components/Navbar.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
-import api from "../utils/apiClient.js";
 import { formatDate } from "../utils/format.js";
 import { resolveBlogImage } from "../utils/resolveSpotImage.js";
 import { showConfirmToast } from "../utils/toast.js";
 import toast from "react-hot-toast";
 import Footer from "../components/Footer.jsx";
+import { blogsAPI } from "../services/api/blogs.api.js";
 
 const BlogDetailPage = () => {
   const { id } = useParams();
@@ -27,8 +27,8 @@ const BlogDetailPage = () => {
   useEffect(() => {
     const fetchBlog = async () => {
       try {
-        const res = await api.get(`/api/blogs/${id}`);
-        setBlog(res.data);
+        const res = await blogsAPI.getById(id);
+        setBlog(res.data?.data || res.data);
       } catch (err) {
         console.error("Failed to load blog", err);
         setError("Failed to load blog.");
@@ -46,8 +46,8 @@ const BlogDetailPage = () => {
     }
     try {
       const endpoint = isLiked ? "unlike" : "like";
-      const res = await api.post(`/api/blogs/${id}/${endpoint}`);
-      setBlog(res.data);
+      const res = await blogsAPI[endpoint](id);
+      setBlog(res.data?.data || res.data);
     } catch (err) {
       console.error("Like failed", err);
       toast.error("Failed to update like");
@@ -57,7 +57,7 @@ const BlogDetailPage = () => {
   const handleDeleteBlog = async () => {
     showConfirmToast("Delete this blog? This cannot be undone.", async () => {
       try {
-        await api.delete(`/api/blogs/${id}`);
+        await blogsAPI.delete(id);
         toast.success("Blog deleted");
         navigate("/blogs");
       } catch (err) {
@@ -75,8 +75,8 @@ const BlogDetailPage = () => {
     }
     if (!commentText.trim()) return;
     try {
-      const res = await api.post(`/api/blogs/${id}/comment`, { text: commentText.trim() });
-      setBlog(res.data);
+      const res = await blogsAPI.addComment(id, commentText.trim());
+      setBlog(res.data?.data || res.data);
       setCommentText("");
       toast.success("Comment added");
     } catch (err) {
@@ -87,8 +87,8 @@ const BlogDetailPage = () => {
 
   const handleDeleteComment = async (commentId) => {
     try {
-      const res = await api.delete(`/api/blogs/${id}/comment/${commentId}`);
-      setBlog(res.data);
+      const res = await blogsAPI.deleteComment(id, commentId);
+      setBlog(res.data?.data || res.data);
     } catch (err) {
       console.error("Delete comment failed", err);
       setError("Failed to delete comment.");
@@ -201,7 +201,8 @@ const BlogDetailPage = () => {
           <div className="space-y-4">
             {blog.comments?.length ? (
               blog.comments.map((c) => {
-                const canDelete = user && (c.user?._id === user.id || isAuthor);
+                const commentUserId = c.user?._id || c.user?.id || c.user;
+                const canDelete = user && (String(commentUserId) === String(user.id) || isAuthor || isAdmin);
                 return (
                   <div
                     key={c._id}

@@ -1,12 +1,12 @@
 import { connectDB } from "./config/db.js";
-import { port } from "./config/env.js";
 import app from "./app.js";
+import { config } from "./config/index.js";
 
 
 const start = async () => {
   await connectDB();
-  app.listen(port, () => {
-    console.log(`Server running on port ${port}`);
+  app.listen(config.PORT, () => {
+    console.log(`Server running on port ${config.PORT}`);
   });
 };
 

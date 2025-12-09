@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar.jsx";
 import Footer from "../components/Footer.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
-import api from "../utils/apiClient.js";
+import { blogsAPI } from "../services/api/blogs.api.js";
 
 const BlogCreatePage = () => {
   const navigate = useNavigate();
@@ -32,12 +32,16 @@ const BlogCreatePage = () => {
         .split(",")
         .map((i) => i.trim())
         .filter(Boolean);
-      const res = await api.post("/api/blogs", { title: form.title.trim(), content: form.content.trim(), images: imagesArr });
+      const res = await blogsAPI.create({ title: form.title.trim(), content: form.content.trim(), images: imagesArr });
       toast.success("Story published");
-      navigate(`/blogs/${res.data._id}`);
+      const blog = res.data?.data || res.data;
+      navigate(`/blogs/${blog._id}`);
     } catch (err) {
-      setError(err.response?.data?.message || "Failed to publish story");
-      toast.error(err.response?.data?.message || "Failed to publish story");
+      const apiMessage = err.response?.data?.message;
+      const detail = err.response?.data?.errors?.[0]?.message;
+      const friendly = detail || apiMessage || "Failed to publish story";
+      setError(friendly);
+      toast.error(friendly);
     } finally {
       setLoading(false);
     }

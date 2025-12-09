@@ -4,7 +4,7 @@ import { useParams } from "react-router-dom";
 import Navbar from "../components/Navbar.jsx";
 import Footer from "../components/Footer.jsx";
 import { resolveSpotImage } from "../utils/resolveSpotImage.js";
-import api from "../utils/apiClient.js";
+import { spotsAPI } from "../services/api/spots.api.js";
 
 const SpotDetailPage = () => {
   const { id } = useParams();
@@ -15,8 +15,8 @@ const SpotDetailPage = () => {
   useEffect(() => {
     const fetchSpot = async () => {
       try {
-        const res = await api.get(`/api/spots/${id}`);
-        setSpot(res.data);
+        const res = await spotsAPI.getById(id);
+        setSpot(res.data?.data || res.data);
       } catch (err) {
         console.error("Failed to load spot", err);
       } finally {

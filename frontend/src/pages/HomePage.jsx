@@ -3,11 +3,12 @@ import { Link } from "react-router-dom";
 import HeroSection from "../components/HeroSection.jsx";
 import Navbar from "../components/Navbar.jsx";
 import SpotCard from "../components/SpotCard.jsx";
-import api from "../utils/apiClient.js";
 import BlogCard from "../components/BlogCard.jsx";
 import EventsSection from "../components/EventsSection.jsx";
 import NewsletterSection from "../components/NewsletterSection.jsx";
 import Footer from "../components/Footer.jsx";
+import { spotsAPI } from "../services/api/spots.api.js";
+import { blogsAPI } from "../services/api/blogs.api.js";
 
 const HomePage = () => {
   const [spots, setSpots] = useState([]);
@@ -16,12 +17,8 @@ const HomePage = () => {
   useEffect(() => {
     const fetchSpots = async () => {
       try {
-        const res = await api.get("/api/spots");
-        const data = Array.isArray(res.data)
-          ? res.data
-          : Array.isArray(res.data?.spots)
-            ? res.data.spots
-            : [];
+        const res = await spotsAPI.getAll();
+        const data = Array.isArray(res.data?.data) ? res.data.data : Array.isArray(res.data) ? res.data : [];
         setSpots(data);
       } catch (err) {
         console.error("Failed to load spots", err);
@@ -34,8 +31,9 @@ const HomePage = () => {
   useEffect(() => {
     const fetchBlogs = async () => {
       try {
-        const res = await api.get("/api/blogs");
-        setBlogs(Array.isArray(res.data) ? res.data : []);
+        const res = await blogsAPI.getAll();
+        const data = Array.isArray(res.data?.data) ? res.data.data : Array.isArray(res.data) ? res.data : [];
+        setBlogs(data);
       } catch (err) {
         console.error("Failed to load blogs", err);
         setBlogs([]);

@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { excerpt, formatDate } from "../utils/format.js";
 import { resolveBlogImage } from "../utils/resolveSpotImage.js";
 import { useAuth } from "../context/AuthContext.jsx";
-import api from "../utils/apiClient.js";
+import { blogsAPI } from "../services/api/blogs.api.js";
 import { showConfirmToast } from "../utils/toast.js";
 
 const BlogCard = ({ blog, onDelete }) => {
@@ -38,7 +38,7 @@ const BlogCard = ({ blog, onDelete }) => {
 
     showConfirmToast("Delete this story? This cannot be undone.", async () => {
       try {
-        await api.delete(`/api/blogs/${_id}`);
+        await blogsAPI.delete(_id);
         toast.success("Story deleted");
         onDelete?.(_id);
       } catch (err) {

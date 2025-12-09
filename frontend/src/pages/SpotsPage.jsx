@@ -3,8 +3,8 @@ import { FiSearch } from "react-icons/fi";
 import Navbar from "../components/Navbar.jsx";
 import SpotCard from "../components/SpotCard.jsx";
 import heroBg from "../assets/images/tour-img05.jpg";
-import api from "../utils/apiClient.js";
 import Footer from "../components/Footer.jsx";
+import { spotsAPI } from "../services/api/spots.api.js";
 
 const SpotsPage = () => {
   const [spots, setSpots] = useState([]);
@@ -12,12 +12,8 @@ const SpotsPage = () => {
   useEffect(() => {
     const fetchSpots = async () => {
       try {
-        const res = await api.get("/api/spots");
-        const data = Array.isArray(res.data)
-          ? res.data
-          : Array.isArray(res.data?.spots)
-            ? res.data.spots
-            : [];
+        const res = await spotsAPI.getAll();
+        const data = Array.isArray(res.data?.data) ? res.data.data : Array.isArray(res.data) ? res.data : [];
         setSpots(data);
       } catch (err) {
         console.error("Failed to load spots", err);
