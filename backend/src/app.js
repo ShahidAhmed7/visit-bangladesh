@@ -18,6 +18,46 @@ app.use(helmet());
 app.use(cors());
 app.use(express.json());
 app.use(cookieParser());
+// Basic sanitize to strip Mongo operators without mutating req.query setter
+const stripMongoOps = (payload) => {
+  if (!payload || typeof payload !== "object") return;
+  Object.keys(payload).forEach((key) => {
+    if (key.startsWith("$") || key.includes(".")) {
+      delete payload[key];
+      return;
+    }
+    stripMongoOps(payload[key]);
+  });
+};
+
+const sanitizeXSS = (payload) => {
+  if (!payload) return;
+  if (typeof payload === "string") {
+    return payload.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  }
+  if (typeof payload !== "object") return payload;
+  Object.keys(payload).forEach((key) => {
+    const val = payload[key];
+    if (typeof val === "string") {
+      payload[key] = sanitizeXSS(val);
+    } else if (Array.isArray(val)) {
+      payload[key] = val.map((item) => sanitizeXSS(item));
+    } else if (val && typeof val === "object") {
+      sanitizeXSS(val);
+    }
+  });
+  return payload;
+};
+
+app.use((req, _res, next) => {
+  stripMongoOps(req.body);
+  stripMongoOps(req.params);
+  stripMongoOps(req.query);
+  sanitizeXSS(req.body);
+  sanitizeXSS(req.params);
+  sanitizeXSS(req.query);
+  next();
+});
 app.use(requestLogger);
 app.use(apiLimiter);
 

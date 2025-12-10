@@ -24,4 +24,7 @@ const TouristSpotSchema = new Schema(
   { timestamps: true }
 );
 
+TouristSpotSchema.index({ category: 1 });
+TouristSpotSchema.index({ "location.division": 1, "location.district": 1 });
+
 export default mongoose.model("TouristSpot", TouristSpotSchema);

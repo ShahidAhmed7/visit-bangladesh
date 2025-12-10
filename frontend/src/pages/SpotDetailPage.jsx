@@ -10,7 +10,6 @@ const SpotDetailPage = () => {
   const { id } = useParams();
   const [spot, setSpot] = useState(null);
   const [loading, setLoading] = useState(true);
-  const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
   useEffect(() => {
     const fetchSpot = async () => {

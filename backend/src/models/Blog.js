@@ -23,4 +23,7 @@ const BlogSchema = new Schema(
   { timestamps: true }
 );
 
+BlogSchema.index({ author: 1, createdAt: -1 });
+BlogSchema.index({ createdAt: -1 });
+
 export default mongoose.model("Blog", BlogSchema);
