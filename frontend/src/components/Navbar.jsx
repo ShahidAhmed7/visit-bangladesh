@@ -45,6 +45,14 @@ const Navbar = () => {
               {item.label}
             </NavLink>
           ))}
+          {user?.role === "regular" ? (
+            <Link
+              to="/apply-guide"
+              className="rounded-full bg-emerald-600 px-3 py-1.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700"
+            >
+              Apply as Guide
+            </Link>
+          ) : null}
           {user ? (
             <Link
               to="/profile"

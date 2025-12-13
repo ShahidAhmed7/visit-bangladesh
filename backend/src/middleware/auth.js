@@ -1,6 +1,7 @@
 import { verifyToken } from "../utils/jwt.js";
+import { UnauthorizedError } from "../shared/errors.js";
 
-const auth = (req, res, next) => {
+export const requireAuth = (req, res, next) => {
   const header = req.headers.authorization;
   let token;
 
@@ -11,7 +12,7 @@ const auth = (req, res, next) => {
   }
 
   if (!token) {
-    return res.status(401).json({ message: "Authorization token missing" });
+    return next(new UnauthorizedError("Authorization token missing"));
   }
 
   try {
@@ -19,8 +20,8 @@ const auth = (req, res, next) => {
     req.user = payload;
     return next();
   } catch (err) {
-    return res.status(401).json({ message: "Invalid or expired token" });
+    return next(new UnauthorizedError("Invalid or expired token"));
   }
 };
 
-export default auth;
+export default requireAuth;

@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { FiGrid } from "react-icons/fi";
 import { HiOutlineBookmark, HiOutlineCalendar, HiOutlineStar, HiOutlineUser, HiOutlineUsers } from "react-icons/hi";
 import toast from "react-hot-toast";
+import { Link } from "react-router-dom";
 import Navbar from "../components/Navbar.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 import { usersAPI } from "../services/api/users.api.js";
@@ -17,6 +18,7 @@ import SidebarNav from "../components/dashboard/SidebarNav.jsx";
 import StatCard from "../components/dashboard/StatCard.jsx";
 import AdminUsersSection from "../components/dashboard/AdminUsersSection.jsx";
 import ConfirmModal from "../components/dashboard/ConfirmModal.jsx";
+import AdminGuideApplicationsPanel from "../components/dashboard/AdminGuideApplicationsPanel.jsx";
 
 const travelPrefs = ["Nature", "Heritage", "Beach", "Hill", "Spiritual"];
 
@@ -59,6 +61,8 @@ const adminUsersMock = [
 
 const ProfilePage = () => {
   const { user, setUser, logout, loading } = useAuth();
+  const isAdmin = user?.role === "admin";
+  const isGuide = user?.role === "guide";
   const baseNavItems = [
     { key: "overview", label: "Overview", icon: FiGrid, colorClass: "text-emerald-600" },
     { key: "profile", label: "Profile & Settings", icon: HiOutlineUser, colorClass: "text-emerald-600" },
@@ -67,7 +71,11 @@ const ProfilePage = () => {
     { key: "reviews", label: "Reviews", icon: HiOutlineStar, colorClass: "text-amber-600" },
     { key: "guides", label: "Followed Guides", icon: HiOutlineUsers, colorClass: "text-indigo-600" },
   ];
-  const navItems = user?.role === "admin" ? [...baseNavItems, { key: "admin", label: "Admin", icon: HiOutlineUsers, colorClass: "text-rose-600" }] : baseNavItems;
+  const adminNavItems = [
+    { key: "admin-users", label: "Admin: Users", icon: HiOutlineUsers, colorClass: "text-rose-600" },
+    { key: "admin-guide-apps", label: "Admin: Guide Applications", icon: HiOutlineBookmark, colorClass: "text-emerald-700" },
+  ];
+  const navItems = isAdmin ? [...baseNavItems, ...adminNavItems] : baseNavItems;
   const [active, setActive] = useState("overview");
   const [confirmAction, setConfirmAction] = useState(null);
   const [profile, setProfile] = useState({
@@ -89,6 +97,12 @@ const ProfilePage = () => {
   const [adminUsers, setAdminUsers] = useState(adminUsersMock);
   const [adminSearch, setAdminSearch] = useState("");
   const [selectedAdminUser, setSelectedAdminUser] = useState(null);
+  const [guideApplication, setGuideApplication] = useState({
+    status: "pending",
+    submittedAt: "2025-01-05T10:00:00Z",
+    cvUrl: "https://example.com/cv1.pdf",
+    adminNotes: "Please add references.",
+  });
 
   useEffect(() => {
     if (user) {
@@ -248,6 +262,7 @@ const ProfilePage = () => {
             stats={stats}
             statsIcons={{ bookmarks: HiOutlineBookmark, reviews: HiOutlineStar, bookings: HiOutlineCalendar, guides: HiOutlineUsers }}
           />
+          {!isAdmin && !isGuide ? <GuideApplicationStatusCard application={guideApplication} /> : null}
           <BlogCardsSection
             blogs={blogs}
             onDelete={(blog) =>
@@ -283,7 +298,7 @@ const ProfilePage = () => {
     if (active === "bookings") return <BookingsSection bookings={dummyBookings} />;
     if (active === "reviews") return <ReviewsSection reviews={dummyReviews} />;
     if (active === "guides") return <GuidesSection guides={bookmarkState.guides} />;
-    if (active === "admin")
+    if (active === "admin-users")
       return (
         <AdminUsersSection
           users={filteredAdminUsers}
@@ -296,11 +311,16 @@ const ProfilePage = () => {
           requestConfirm={requestConfirm}
         />
       );
+    if (active === "admin-guide-apps") return <AdminGuideApplicationsPanel />;
     return null;
   };
 
-  const filteredAdminUsers = adminUsers.filter(
-    (u) => u.name.toLowerCase().includes(adminSearch.toLowerCase()) || u.email.toLowerCase().includes(adminSearch.toLowerCase())
+  const filteredAdminUsers = useMemo(
+    () =>
+      adminUsers.filter(
+        (u) => u.name.toLowerCase().includes(adminSearch.toLowerCase()) || u.email.toLowerCase().includes(adminSearch.toLowerCase())
+      ),
+    [adminSearch, adminUsers]
   );
 
   return (
@@ -324,9 +344,9 @@ const ProfilePage = () => {
             <StatCard icon={HiOutlineUsers} label="Guides" value={stats.guides} />
           </div>
           <SidebarNav items={navItems} active={active} onChange={setActive} />
-          {user.role === "admin" ? (
+          {isAdmin ? (
             <div className="rounded-2xl bg-emerald-50 p-3 text-xs font-semibold text-emerald-800 shadow-sm ring-1 ring-emerald-100">
-              Admin: use Users tab for role changes and blocking.
+              Admin: manage users and guide applications from the sidebar.
             </div>
           ) : null}
           <button
@@ -348,6 +368,72 @@ const ProfilePage = () => {
         onConfirm={() => confirmAction?.action?.()}
         onClose={() => setConfirmAction(null)}
       />
+    </div>
+  );
+};
+
+const GuideApplicationStatusCard = ({ application }) => {
+  if (!application || application.status === "none") {
+    return (
+      <div className="rounded-3xl border border-dashed border-emerald-200 bg-emerald-50 p-5 text-sm text-emerald-800">
+        No guide application yet.{" "}
+        <Link to="/apply-guide" className="font-semibold text-emerald-700 underline underline-offset-4">
+          Apply as Guide
+        </Link>
+      </div>
+    );
+  }
+
+  const statusStyles = {
+    pending: "bg-amber-100 text-amber-800 ring-amber-200",
+    rejected: "bg-rose-100 text-rose-800 ring-rose-200",
+    approved: "bg-emerald-100 text-emerald-800 ring-emerald-200",
+  };
+
+  return (
+    <div className="rounded-3xl border border-emerald-100 bg-white p-5 shadow-sm">
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-sm font-semibold text-slate-800">Guide Application Status</p>
+          <p className="text-xs text-slate-600">Submitted {new Date(application.submittedAt).toLocaleDateString()}</p>
+        </div>
+        <span className={`rounded-full px-3 py-1 text-xs font-semibold ring-1 ${statusStyles[application.status]}`}>
+          {application.status[0].toUpperCase() + application.status.slice(1)}
+        </span>
+      </div>
+      <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-slate-700">
+        {application.cvUrl ? (
+          <a
+            href={application.cvUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="rounded-full bg-emerald-50 px-3 py-1 font-semibold text-emerald-700 ring-1 ring-emerald-100 transition hover:bg-emerald-100"
+          >
+            View CV
+          </a>
+        ) : null}
+        {application.adminNotes && application.status === "rejected" ? (
+          <span className="rounded-full bg-rose-50 px-3 py-1 font-semibold text-rose-700 ring-1 ring-rose-100">
+            Reason: {application.adminNotes}
+          </span>
+        ) : null}
+        {application.status === "rejected" ? (
+          <Link
+            to="/apply-guide"
+            className="rounded-full border border-emerald-200 bg-white px-3 py-1 font-semibold text-emerald-700 transition hover:bg-emerald-50"
+          >
+            Re-apply
+          </Link>
+        ) : null}
+        {application.status === "pending" ? (
+          <Link
+            to="/apply-guide"
+            className="rounded-full border border-slate-200 bg-white px-3 py-1 font-semibold text-slate-700 transition hover:bg-slate-50"
+          >
+            View details
+          </Link>
+        ) : null}
+      </div>
     </div>
   );
 };

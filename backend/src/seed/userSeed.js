@@ -23,4 +23,16 @@ export const users = [
     password: "AdminPass123!",
     role: "admin",
   },
+  {
+    name: "Guide User One",
+    email: "guide1@example.com",
+    password: "GuidePass123!",
+    role: "guide",
+  },
+  {
+    name: "Guide User Two",
+    email: "guide2@example.com",
+    password: "GuidePass123!",
+    role: "guide",
+  },
 ];

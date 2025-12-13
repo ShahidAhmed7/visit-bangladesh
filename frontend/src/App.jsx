@@ -14,6 +14,7 @@ import BlogEditPage from "./pages/BlogEditPage.jsx";
 import EventsPage from "./pages/EventsPage.jsx";
 import EventDetailPage from "./pages/EventDetailPage.jsx";
 import EventWizardPage from "./pages/EventWizardPage.jsx";
+import ApplyForGuidePage from "./pages/ApplyForGuidePage.jsx";
 import { AuthProvider } from "./context/AuthContext.jsx";
 
 const Placeholder = ({ title }) => (
@@ -44,6 +45,7 @@ function App() {
           <Route path="/events/new" element={<EventWizardPage />} />
           <Route path="/events/:id" element={<EventDetailPage />} />
           <Route path="/events/:id/edit" element={<EventWizardPage />} />
+          <Route path="/apply-guide" element={<ApplyForGuidePage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/profile" element={<ProfilePage />} />
