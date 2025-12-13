@@ -2,6 +2,7 @@ import express from "express";
 import { requireAuth } from "../../middleware/auth.js";
 import requireAdmin from "../../middleware/requireAdmin.js";
 import { validate } from "../../middleware/validate.js";
+import { uploadCv } from "../../middleware/upload.js";
 import {
   applyForGuide,
   getMyApplications,
@@ -14,7 +15,7 @@ import { applyGuideSchema, adminReviewSchema } from "./guideApplication.validati
 
 const router = express.Router();
 
-router.post("/guide-applications", requireAuth, validate(applyGuideSchema), applyForGuide);
+router.post("/guide-applications", requireAuth, uploadCv.single("cv"), validate(applyGuideSchema), applyForGuide);
 router.get("/guide-applications/me", requireAuth, getMyApplications);
 router.get("/admin/guide-applications", requireAuth, requireAdmin, adminListApplications);
 router.get("/admin/guide-applications/:id", requireAuth, requireAdmin, adminGetApplication);

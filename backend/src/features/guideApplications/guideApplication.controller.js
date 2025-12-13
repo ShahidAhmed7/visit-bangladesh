@@ -12,6 +12,23 @@ export const applyForGuide = asyncHandler(async (req, res) => {
     return res.status(409).json({ message: "You already have a pending application" });
   }
 
+  const cvPayload = (() => {
+    if (req.file) {
+      return {
+        url: req.file.secure_url || req.file.path,
+        publicId: req.file.public_id || req.file.filename,
+        originalFilename: req.file.originalname,
+        bytes: req.file.bytes || req.file.size,
+        format: req.file.format || req.file.mimetype,
+      };
+    }
+    return req.body.cv;
+  })();
+
+  if (!cvPayload?.url || !cvPayload?.publicId) {
+    return res.status(400).json({ message: "CV upload is required" });
+  }
+
   const application = await GuideApplication.create({
     userId,
     status: "pending",
@@ -19,7 +36,7 @@ export const applyForGuide = asyncHandler(async (req, res) => {
     yearsOfExperience: req.body.yearsOfExperience,
     languages: req.body.languages,
     regions: req.body.regions,
-    cv: req.body.cv,
+    cv: cvPayload,
   });
 
   res.status(201).json(successResponse(application, "Application submitted"));

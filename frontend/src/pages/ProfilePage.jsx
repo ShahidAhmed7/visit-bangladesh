@@ -6,6 +6,7 @@ import { Link } from "react-router-dom";
 import Navbar from "../components/Navbar.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 import { usersAPI } from "../services/api/users.api.js";
+import { guideApplicationsAPI } from "../services/api/guideApplications.api.js";
 import BookingsSection from "../components/dashboard/BookingsSection.jsx";
 import BookmarksSection from "../components/dashboard/BookmarksSection.jsx";
 import BlogCardsSection from "../components/dashboard/BlogCardsSection.jsx";
@@ -88,6 +89,7 @@ const ProfilePage = () => {
     language: "English",
     preferences: new Set(["Nature", "Beach"]),
   });
+  const [editMode, setEditMode] = useState(false);
   const [passwords, setPasswords] = useState({ currentPassword: "", newPassword: "", confirmPassword: "" });
   const [savingProfile, setSavingProfile] = useState(false);
   const [savingPassword, setSavingPassword] = useState(false);
@@ -97,12 +99,15 @@ const ProfilePage = () => {
   const [adminUsers, setAdminUsers] = useState(adminUsersMock);
   const [adminSearch, setAdminSearch] = useState("");
   const [selectedAdminUser, setSelectedAdminUser] = useState(null);
-  const [guideApplication, setGuideApplication] = useState({
-    status: "pending",
-    submittedAt: "2025-01-05T10:00:00Z",
-    cvUrl: "https://example.com/cv1.pdf",
-    adminNotes: "Please add references.",
-  });
+  const [guideApplication, setGuideApplication] = useState(null);
+  const [loadingGuideApplication, setLoadingGuideApplication] = useState(false);
+  const filteredAdminUsers = useMemo(
+    () =>
+      adminUsers.filter(
+        (u) => u.name.toLowerCase().includes(adminSearch.toLowerCase()) || u.email.toLowerCase().includes(adminSearch.toLowerCase())
+      ),
+    [adminSearch, adminUsers]
+  );
 
   useEffect(() => {
     if (user) {
@@ -120,6 +125,23 @@ const ProfilePage = () => {
       }));
     }
   }, [user]);
+
+  useEffect(() => {
+    const loadGuideApplication = async () => {
+      if (!user || isAdmin || isGuide) return;
+      try {
+        setLoadingGuideApplication(true);
+        const res = await guideApplicationsAPI.getMine();
+        const apps = res.data?.data?.applications || res.data?.applications || [];
+        setGuideApplication(apps[0] || { status: "none" });
+      } catch (err) {
+        setGuideApplication({ status: "none" });
+      } finally {
+        setLoadingGuideApplication(false);
+      }
+    };
+    loadGuideApplication();
+  }, [user, isAdmin, isGuide]);
 
   if (loading) {
     return (
@@ -262,7 +284,9 @@ const ProfilePage = () => {
             stats={stats}
             statsIcons={{ bookmarks: HiOutlineBookmark, reviews: HiOutlineStar, bookings: HiOutlineCalendar, guides: HiOutlineUsers }}
           />
-          {!isAdmin && !isGuide ? <GuideApplicationStatusCard application={guideApplication} /> : null}
+          {!isAdmin && !isGuide ? (
+            <GuideApplicationStatusCard application={guideApplication} loading={loadingGuideApplication} />
+          ) : null}
           <BlogCardsSection
             blogs={blogs}
             onDelete={(blog) =>
@@ -281,17 +305,34 @@ const ProfilePage = () => {
       );
     if (active === "profile")
       return (
-        <ProfileForm
-          profile={profile}
-          onChange={onProfileChange}
-          onSave={onSaveProfile}
-          saving={savingProfile}
-          togglePref={togglePref}
-          travelPrefs={travelPrefs}
-          logout={logout}
-        >
-          <PasswordForm passwords={passwords} setPasswords={setPasswords} saving={savingPassword} onSave={onSavePassword} />
-        </ProfileForm>
+        <div className="space-y-3 rounded-3xl border border-emerald-100 bg-white p-4 shadow-sm">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-semibold text-slate-800">Profile & Settings</p>
+              <p className="text-xs text-slate-500">Toggle edit mode to change your info</p>
+            </div>
+            <button
+              onClick={() => setEditMode((prev) => !prev)}
+              className={`rounded-full px-3 py-1 text-xs font-semibold ring-1 ${
+                editMode ? "bg-emerald-600 text-white ring-emerald-600" : "bg-slate-100 text-slate-700 ring-slate-200"
+              }`}
+            >
+              {editMode ? "Editing" : "Edit"}
+            </button>
+          </div>
+          <ProfileForm
+            profile={profile}
+            onChange={onProfileChange}
+            onSave={onSaveProfile}
+            saving={savingProfile}
+            togglePref={togglePref}
+            travelPrefs={travelPrefs}
+            logout={logout}
+            disabled={!editMode}
+          >
+            <PasswordForm passwords={passwords} setPasswords={setPasswords} saving={savingPassword} onSave={onSavePassword} />
+          </ProfileForm>
+        </div>
       );
     if (active === "bookmarks")
       return <BookmarksSection bookmarkTab={bookmarkTab} setBookmarkTab={setBookmarkTab} bookmarkState={bookmarkState} toggleBookmark={toggleBookmark} />;
@@ -315,14 +356,6 @@ const ProfilePage = () => {
     return null;
   };
 
-  const filteredAdminUsers = useMemo(
-    () =>
-      adminUsers.filter(
-        (u) => u.name.toLowerCase().includes(adminSearch.toLowerCase()) || u.email.toLowerCase().includes(adminSearch.toLowerCase())
-      ),
-    [adminSearch, adminUsers]
-  );
-
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
       <Navbar />
@@ -335,6 +368,9 @@ const ProfilePage = () => {
             <div>
               <div className="text-sm font-bold text-slate-900">{user?.name}</div>
               <div className="text-xs text-slate-600">{user?.email}</div>
+              <div className="mt-1 inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 ring-1 ring-emerald-100">
+                Role: {user?.role}
+              </div>
             </div>
           </div>
           <div className="grid grid-cols-2 gap-2 text-xs font-semibold text-slate-700">
@@ -372,7 +408,16 @@ const ProfilePage = () => {
   );
 };
 
-const GuideApplicationStatusCard = ({ application }) => {
+const GuideApplicationStatusCard = ({ application, loading }) => {
+  if (loading) {
+    return (
+      <div className="rounded-3xl border border-emerald-100 bg-white p-5 shadow-sm">
+        <div className="h-4 w-32 animate-pulse rounded bg-slate-200" />
+        <div className="mt-2 h-3 w-56 animate-pulse rounded bg-slate-200" />
+      </div>
+    );
+  }
+
   if (!application || application.status === "none") {
     return (
       <div className="rounded-3xl border border-dashed border-emerald-200 bg-emerald-50 p-5 text-sm text-emerald-800">
@@ -389,22 +434,25 @@ const GuideApplicationStatusCard = ({ application }) => {
     rejected: "bg-rose-100 text-rose-800 ring-rose-200",
     approved: "bg-emerald-100 text-emerald-800 ring-emerald-200",
   };
+  const statusLabel = application.status ? application.status[0].toUpperCase() + application.status.slice(1) : "Unknown";
 
   return (
     <div className="rounded-3xl border border-emerald-100 bg-white p-5 shadow-sm">
       <div className="flex items-center justify-between">
         <div>
           <p className="text-sm font-semibold text-slate-800">Guide Application Status</p>
-          <p className="text-xs text-slate-600">Submitted {new Date(application.submittedAt).toLocaleDateString()}</p>
+          <p className="text-xs text-slate-600">
+            Submitted {application.createdAt ? new Date(application.createdAt).toLocaleDateString() : new Date().toLocaleDateString()}
+          </p>
         </div>
-        <span className={`rounded-full px-3 py-1 text-xs font-semibold ring-1 ${statusStyles[application.status]}`}>
-          {application.status[0].toUpperCase() + application.status.slice(1)}
+        <span className={`rounded-full px-3 py-1 text-xs font-semibold ring-1 ${statusStyles[application.status] || ""}`}>
+          {statusLabel}
         </span>
       </div>
       <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-slate-700">
-        {application.cvUrl ? (
+        {application.cv?.url || application.cvUrl ? (
           <a
-            href={application.cvUrl}
+            href={application.cv?.url || application.cvUrl}
             target="_blank"
             rel="noreferrer"
             className="rounded-full bg-emerald-50 px-3 py-1 font-semibold text-emerald-700 ring-1 ring-emerald-100 transition hover:bg-emerald-100"

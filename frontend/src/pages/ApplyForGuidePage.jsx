@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { HiCheckCircle, HiOutlineCloudUpload, HiOutlineDocumentText, HiOutlineSparkles } from "react-icons/hi";
+import toast from "react-hot-toast";
 import Navbar from "../components/Navbar.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
+import { guideApplicationsAPI } from "../services/api/guideApplications.api.js";
 
-const USE_MOCK = true;
+const USE_MOCK = import.meta.env.VITE_USE_MOCK_GUIDE === "true";
 
 const specialtiesOptions = ["Nature", "Heritage", "Food", "Photography", "Family trips"];
 const regionsOptions = ["Dhaka", "Sylhet", "Chattogram", "Khulna", "Rajshahi", "Barishal", "Rangpur"];
@@ -12,6 +14,8 @@ const languagesOptions = ["Bangla", "English", "Hindi", "Arabic", "Chinese"];
 
 const ApplyForGuidePage = () => {
   const { user } = useAuth();
+  const [loadingExisting, setLoadingExisting] = useState(!USE_MOCK);
+  const [existingApplication, setExistingApplication] = useState(null);
   const [step, setStep] = useState(1);
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -36,6 +40,39 @@ const ApplyForGuidePage = () => {
     }
   }, [user]);
 
+  useEffect(() => {
+    const fetchExisting = async () => {
+      if (USE_MOCK || !user) {
+        setLoadingExisting(false);
+        return;
+      }
+      try {
+        setLoadingExisting(true);
+        const res = await guideApplicationsAPI.getMine();
+        const apps = res.data?.data?.applications || res.data?.applications || [];
+        if (apps.length) {
+          const latest = apps[0];
+          setExistingApplication(latest);
+          setStatus(latest.status);
+          setSubmitted(latest.status === "pending" || latest.status === "approved");
+          if (latest.cv?.url) {
+            setUpload({
+              name: latest.cv.originalFilename || "Uploaded CV",
+              size: latest.cv.bytes,
+              url: latest.cv.url,
+              format: latest.cv.format,
+            });
+          }
+        }
+      } catch (err) {
+        // if unauthorized, redirect to login prompt below
+      } finally {
+        setLoadingExisting(false);
+      }
+    };
+    fetchExisting();
+  }, [user]);
+
   const toggleChip = (key, value) => {
     setForm((prev) => {
       const exists = prev[key].includes(value);
@@ -44,42 +81,93 @@ const ApplyForGuidePage = () => {
     });
   };
 
-  const handleUpload = (file) => {
+  const handleUpload = async (file) => {
     if (!file) return;
     setUploading(true);
     setProgress(0);
     if (USE_MOCK) {
-      const total = 100;
-      let current = 0;
-      const interval = setInterval(() => {
-        current += 15;
-        setProgress(Math.min(current, total));
-        if (current >= total) {
-          clearInterval(interval);
-          setUploading(false);
-          setUpload({
-            name: file.name,
-            size: file.size,
-            url: "#",
-            format: file.name.split(".").pop(),
-          });
-        }
-      }, 200);
+      setTimeout(() => {
+        setUpload({ name: file.name, size: file.size, url: "#", format: file.name.split(".").pop(), file });
+        setUploading(false);
+        setProgress(100);
+      }, 300);
+      return;
+    }
+    setUpload({ name: file.name, size: file.size, file, format: file.name.split(".").pop() });
+    setUploading(false);
+    setProgress(100);
+    toast.success("CV ready to upload");
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!upload) {
+      toast.error("Upload your CV before submitting");
+      return;
+    }
+    if (!form.confirm) {
+      toast.error("Please confirm the information is accurate");
+      return;
+    }
+
+    if (USE_MOCK) {
+      setSubmitted(true);
+      setStatus("pending");
+      setExistingApplication({
+        status: "pending",
+        submittedAt: new Date().toISOString(),
+        cvUrl: upload.url,
+        experienceText: form.experienceText,
+      });
+      toast.success("Application submitted (mock)");
+      return;
+    }
+
+    try {
+      const payload = new FormData();
+      payload.append("experienceText", form.experienceText);
+      payload.append("yearsOfExperience", form.years);
+      form.languages.forEach((lang) => payload.append("languages[]", lang));
+      form.regions.forEach((region) => payload.append("regions[]", region));
+      payload.append("cv", upload.file);
+
+      const res = await guideApplicationsAPI.apply(payload);
+      const app = res.data?.data || res.data;
+      setExistingApplication(app);
+      setSubmitted(true);
+      setStatus("pending");
+      toast.success("Application submitted");
+    } catch (err) {
+      const msg = err.response?.data?.message || "Failed to submit";
+      toast.error(msg);
     }
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (!upload) return;
-    setSubmitted(true);
-    setStatus("pending");
-  };
-
   const charCount = form.experienceText.length;
-  const progressPercent = useMemo(() => Math.round((step / 3) * 100), [step]);
+  const progressPercent = useMemo(() => Math.round((step / 4) * 100), [step]);
+
+  const stepsMeta = [
+    { id: 1, label: "Profile basics" },
+    { id: 2, label: "Experience" },
+    { id: 3, label: "Upload CV" },
+    { id: 4, label: "Review & submit" },
+  ];
 
   const renderStep = () => {
-    if (submitted) {
+    if (loadingExisting) {
+      return (
+        <div className="rounded-3xl border border-emerald-100 bg-white p-6 shadow-md">
+          <div className="h-4 w-32 animate-pulse rounded bg-slate-200" />
+          <div className="mt-2 h-3 w-56 animate-pulse rounded bg-slate-200" />
+          <div className="mt-4 grid grid-cols-2 gap-3">
+            <div className="h-16 animate-pulse rounded-2xl bg-slate-200" />
+            <div className="h-16 animate-pulse rounded-2xl bg-slate-200" />
+          </div>
+        </div>
+      );
+    }
+
+    if (submitted || status === "pending") {
       return (
         <div className="space-y-4 rounded-3xl bg-white p-6 shadow-lg ring-1 ring-emerald-100">
           <div className="flex items-center gap-3">
@@ -88,7 +176,9 @@ const ApplyForGuidePage = () => {
             </div>
             <div>
               <p className="text-lg font-semibold text-slate-900">Application submitted</p>
-              <p className="text-sm text-slate-600">Status: Pending review (1–3 days)</p>
+              <p className="text-sm text-slate-600">
+                Status: {status === "pending" ? "Pending review (1–3 days)" : status}
+              </p>
             </div>
           </div>
           <p className="text-sm text-slate-700">
@@ -126,13 +216,28 @@ const ApplyForGuidePage = () => {
 
     return (
       <form onSubmit={handleSubmit} className="space-y-5 rounded-3xl bg-white p-6 shadow-lg ring-1 ring-emerald-100">
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-lg font-semibold text-slate-900">Step {step} of 3</h3>
-            <p className="text-sm text-slate-600">Complete the steps to submit your application.</p>
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-semibold text-slate-900">Step {step} of 4</h3>
+              <p className="text-sm text-slate-600">Complete the steps to submit your application.</p>
+            </div>
+            <div className="w-32 rounded-full bg-slate-100">
+              <div className="h-2 rounded-full bg-emerald-500" style={{ width: `${progressPercent}%` }} />
+            </div>
           </div>
-          <div className="w-32 rounded-full bg-slate-100">
-            <div className="h-2 rounded-full bg-emerald-500" style={{ width: `${progressPercent}%` }} />
+          <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+            {stepsMeta.map((s) => (
+              <div
+                key={s.id}
+                className={`flex items-center gap-2 rounded-2xl px-3 py-2 text-xs font-semibold ring-1 ${
+                  step === s.id ? "bg-emerald-600 text-white ring-emerald-600" : step > s.id ? "bg-emerald-50 text-emerald-700 ring-emerald-100" : "bg-slate-50 text-slate-600 ring-slate-200"
+                }`}
+              >
+                <span className="h-6 w-6 rounded-full bg-white/20 text-center text-[11px] leading-6 text-white">{s.id}</span>
+                <span>{s.label}</span>
+              </div>
+            ))}
           </div>
         </div>
 
@@ -260,7 +365,15 @@ const ApplyForGuidePage = () => {
 
         {step === 3 && (
           <div className="space-y-4">
-            <div className="rounded-2xl border border-dashed border-emerald-200 bg-emerald-50 p-6 text-center">
+            <div
+              className="rounded-2xl border-2 border-dashed border-emerald-300 bg-emerald-50 p-6 text-center"
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={(e) => {
+                e.preventDefault();
+                const file = e.dataTransfer.files?.[0];
+                if (file) handleUpload(file);
+              }}
+            >
               <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-white text-emerald-600 ring-1 ring-emerald-100">
                 <HiOutlineCloudUpload className="h-7 w-7" />
               </div>
@@ -311,6 +424,40 @@ const ApplyForGuidePage = () => {
                 </div>
               )}
             </div>
+          </div>
+        )}
+
+        {step === 4 && (
+          <div className="space-y-4">
+            <div className="rounded-2xl bg-slate-50 p-4 ring-1 ring-slate-100">
+              <h4 className="text-sm font-semibold text-slate-800">Review your details</h4>
+              <ul className="mt-2 space-y-2 text-sm text-slate-700">
+                <li>
+                  <span className="font-semibold">Name:</span> {form.fullName}
+                </li>
+                <li>
+                  <span className="font-semibold">Phone:</span> {form.phone} | <span className="font-semibold">City:</span> {form.city}
+                </li>
+                <li>
+                  <span className="font-semibold">Languages:</span> {form.languages.join(", ") || "N/A"}
+                </li>
+                <li>
+                  <span className="font-semibold">Regions:</span> {form.regions.join(", ") || "N/A"}
+                </li>
+                <li>
+                  <span className="font-semibold">Specialties:</span> {form.specialties.join(", ") || "N/A"}
+                </li>
+                <li>
+                  <span className="font-semibold">Experience:</span> {form.years} years
+                </li>
+                <li className="leading-relaxed">
+                  <span className="font-semibold">Summary:</span> {form.experienceText || "N/A"}
+                </li>
+                <li>
+                  <span className="font-semibold">CV:</span> {upload?.name || "Not uploaded"}
+                </li>
+              </ul>
+            </div>
             <label className="flex items-start gap-2 text-sm text-slate-700">
               <input
                 type="checkbox"
@@ -343,10 +490,10 @@ const ApplyForGuidePage = () => {
           ) : (
             <span />
           )}
-          {step < 3 ? (
+          {step < 4 ? (
             <button
               type="button"
-              onClick={() => setStep((prev) => Math.min(prev + 1, 3))}
+              onClick={() => setStep((prev) => Math.min(prev + 1, 4))}
               className="rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700"
             >
               Continue
@@ -371,6 +518,33 @@ const ApplyForGuidePage = () => {
             >
               Go to Profile
             </Link>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-slate-50 text-slate-900">
+        <Navbar />
+        <main className="mx-auto max-w-5xl px-4 pb-16 pt-24 md:px-6 md:pt-28">
+          <div className="rounded-3xl border border-emerald-100 bg-white p-6 text-center shadow-md">
+            <p className="text-lg font-bold text-slate-900">Please login to apply as a guide.</p>
+            <div className="mt-3 flex justify-center gap-3">
+              <Link
+                to="/login"
+                className="rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700"
+              >
+                Login
+              </Link>
+              <Link
+                to="/register"
+                className="rounded-full border border-emerald-200 bg-white px-4 py-2 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-50"
+              >
+                Register
+              </Link>
+            </div>
           </div>
         </main>
       </div>

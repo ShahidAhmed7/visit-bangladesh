@@ -11,7 +11,7 @@ export const applyGuideSchema = Joi.object({
     originalFilename: Joi.string().trim(),
     bytes: Joi.number().min(0),
     format: Joi.string().trim(),
-  }).required(),
+  }).optional(),
 });
 
 export const adminReviewSchema = Joi.object({
