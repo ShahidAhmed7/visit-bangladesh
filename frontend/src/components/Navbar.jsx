@@ -4,16 +4,16 @@ import logo from "../assets/images/logo.png";
 import { HiUserCircle } from "react-icons/hi";
 import { useAuth } from "../context/AuthContext.jsx";
 
-const navItems = [
-  { label: "Home", to: "/" },
-  { label: "Blogs", to: "/blogs" },
-  { label: "Events", to: "/events" },
-  { label: "Spots", to: "/spots" },
-];
-
 const Navbar = () => {
   const [scrolled, setScrolled] = useState(false);
   const { user } = useAuth();
+
+  const navItems = [
+    { label: "Home", to: "/" },
+    { label: "Blogs", to: "/blogs" },
+    { label: "Events", to: "/events" },
+    { label: "Spots", to: "/spots" },
+  ];
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 10);

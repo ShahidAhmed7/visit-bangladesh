@@ -61,19 +61,23 @@ const BlogCard = ({ blog, onDelete }) => {
       }}
       className="group relative flex h-full cursor-pointer flex-col overflow-hidden rounded-3xl border border-emerald-100 bg-white shadow-md transition hover:-translate-y-1 hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-emerald-500"
     >
-      {cover ? (
-        <div className="relative h-48 w-full overflow-hidden">
+      <div className="relative h-48 w-full overflow-hidden rounded-b-none">
+        {cover ? (
           <img
             src={cover}
             alt={title}
             className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
             loading="lazy"
           />
-          <span className="absolute left-4 top-4 rounded-full bg-white/90 px-3 py-1 text-xs font-semibold text-emerald-700 shadow-sm ring-1 ring-emerald-200">
-            Travel Story
-          </span>
-        </div>
-      ) : null}
+        ) : (
+          <div className="flex h-full w-full items-center justify-center bg-emerald-50 text-sm font-semibold text-emerald-700">
+            No image
+          </div>
+        )}
+        <span className="absolute left-4 top-4 rounded-full bg-white/90 px-3 py-1 text-xs font-semibold text-emerald-700 shadow-sm ring-1 ring-emerald-200">
+          Travel Story
+        </span>
+      </div>
       {(isOwner || isAdmin) ? (
         <button
           onClick={handleDelete}

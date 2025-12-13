@@ -4,6 +4,7 @@ import express from "express";
 import helmet from "helmet";
 import authRoutes from "./features/auth/auth.routes.js";
 import blogRoutes from "./features/blogs/blog.routes.js";
+import eventRoutes from "./features/events/events.routes.js";
 import spotsRoutes from "./features/spots/spots.routes.js";
 import userRoutes from "./features/users/user.routes.js";
 import swaggerDoc from "./docs/swagger.js";
@@ -69,6 +70,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/spots", spotsRoutes);
 app.use("/api/blogs", blogRoutes);
+app.use("/api/events", eventRoutes);
 
 app.use(notFound);
 app.use(errorHandler);

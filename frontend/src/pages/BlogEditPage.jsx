@@ -11,6 +11,7 @@ const BlogEditPage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [form, setForm] = useState({ title: "", content: "", images: "" });
+  const [imageFile, setImageFile] = useState(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
@@ -55,11 +56,11 @@ const BlogEditPage = () => {
     setError("");
     setLoading(true);
     try {
-      const imagesArr = form.images
-        .split(",")
-        .map((i) => i.trim())
-        .filter(Boolean);
-      await blogsAPI.update(id, { title: form.title.trim(), content: form.content.trim(), images: imagesArr });
+      const payload = new FormData();
+      payload.append("title", form.title.trim());
+      payload.append("content", form.content.trim());
+      if (imageFile) payload.append("image", imageFile);
+      await blogsAPI.update(id, payload);
       toast.success("Story updated");
       navigate(`/blogs/${id}`);
     } catch (err) {
@@ -118,14 +119,12 @@ const BlogEditPage = () => {
               />
             </div>
             <div>
-              <label className="text-sm font-semibold text-slate-700">Image URLs (comma-separated, optional)</label>
+              <label className="text-sm font-semibold text-slate-700">Upload new cover image (optional)</label>
               <input
-                type="text"
-                name="images"
-                value={form.images}
-                onChange={onChange}
-                className="mt-2 w-full rounded-2xl border border-emerald-100 px-4 py-3 text-slate-900 shadow-sm outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100"
-                placeholder="/assets/images/tour-img01.jpg, https://example.com/photo.jpg"
+                type="file"
+                accept="image/*"
+                onChange={(e) => setImageFile(e.target.files?.[0] || null)}
+                className="mt-2 w-full rounded-2xl border border-emerald-100 px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition file:mr-3 file:cursor-pointer file:rounded-full file:border-0 file:bg-emerald-50 file:px-4 file:py-2 file:text-emerald-700 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100"
               />
             </div>
             <div className="flex flex-wrap items-center gap-3">

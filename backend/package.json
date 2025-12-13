@@ -16,6 +16,7 @@
   "description": "",
   "dependencies": {
     "bcrypt": "^6.0.0",
+    "cloudinary": "^1.41.3",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
@@ -26,6 +27,8 @@
     "jsonwebtoken": "^9.0.3",
     "mongodb": "^7.0.0",
     "mongoose": "^9.0.1",
+    "multer": "^2.0.2",
+    "multer-storage-cloudinary": "^4.0.0",
     "nodemon": "^3.1.11",
     "winston": "^3.19.0",
     "zod": "^4.1.13"
