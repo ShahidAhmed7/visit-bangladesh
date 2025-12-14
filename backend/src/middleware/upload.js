@@ -22,6 +22,8 @@ const docStorage = new CloudinaryStorage({
     folder: "visit-bangladesh/cv",
     allowed_formats: ["pdf", "doc", "docx"],
     resource_type: "raw",
+    use_filename: true,
+    unique_filename: false,
   },
 });
 

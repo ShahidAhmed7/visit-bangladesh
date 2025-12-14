@@ -12,7 +12,6 @@ import toast from "react-hot-toast";
 import { guideApplicationsAPI } from "../../services/api/guideApplications.api.js";
 
 const USE_MOCK = import.meta.env.VITE_USE_MOCK_GUIDE === "true";
-const CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
 
 const cn = (...classes) => classes.filter(Boolean).join(" ");
 
@@ -220,6 +219,31 @@ const AdminGuideApplicationsPanel = () => {
         return name.toLowerCase().includes(term) || email.toLowerCase().includes(term);
       });
   }, [applications, search, statusFilter]);
+
+  const buildCvHref = (cv = {}, fallbackUrl) => {
+    const baseUrl = cv.url || fallbackUrl;
+    if (!baseUrl) return null;
+    if (!baseUrl.includes("/upload/")) return baseUrl;
+
+    const deriveName = () => {
+      if (cv.originalFilename) return cv.originalFilename;
+      try {
+        const last = decodeURIComponent(new URL(baseUrl).pathname.split("/").pop() || "");
+        if (last && last.includes(".") && !last.endsWith(".")) return last;
+      } catch {
+        /* ignore */
+      }
+      if (cv.publicId) {
+        const tail = cv.publicId.split("/").pop() || cv.publicId;
+        if (tail && tail.includes(".") && !tail.endsWith(".")) return tail;
+      }
+      if (cv.format) return `cv.${(cv.format || "").split("/").pop()}`;
+      return "cv.pdf";
+    };
+
+    const encoded = encodeURIComponent(deriveName());
+    return baseUrl.replace("/upload/", `/upload/fl_attachment:${encoded}/`);
+  };
 
   const updateStatus = (id, nextStatus, notes) => {
     setApplications((prev) =>
@@ -590,15 +614,7 @@ const AdminGuideApplicationsPanel = () => {
                 </div>
                 {(() => {
                   const cv = selected.cv || {};
-                  const directUrl = cv.url || selected.cvUrl;
-                  const cloudNameFromUrl = directUrl ? directUrl.split("/")[3] : null;
-                  const cloudName = CLOUD_NAME || cloudNameFromUrl;
-                  const publicId = cv.publicId;
-                  const fallbackUrl =
-                    !directUrl && cloudName && publicId
-                      ? `https://res.cloudinary.com/${cloudName}/raw/upload/${publicId.replace(/^raw\/upload\//, "")}`
-                      : null;
-                  const href = directUrl || fallbackUrl;
+                  const href = buildCvHref(cv, selected.cvUrl);
                   if (!href) return null;
                   return (
                     <a

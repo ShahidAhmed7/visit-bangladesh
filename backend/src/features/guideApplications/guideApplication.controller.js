@@ -14,18 +14,23 @@ export const applyForGuide = asyncHandler(async (req, res) => {
 
   const cvPayload = (() => {
     if (req.file) {
+      const url = req.file.secure_url || req.file.path || req.file.url;
+      const publicId = req.file.public_id || req.file.filename || null;
+      const size = req.file.bytes || req.file.size;
+      const format = req.file.format || req.file.mimetype;
+      const original = req.file.originalname || req.file.original_filename;
       return {
-        url: req.file.secure_url || req.file.path,
-        publicId: req.file.public_id || req.file.filename,
-        originalFilename: req.file.originalname,
-        bytes: req.file.bytes || req.file.size,
-        format: req.file.format || req.file.mimetype,
+        url,
+        publicId,
+        originalFilename: original,
+        bytes: size,
+        format,
       };
     }
     return req.body.cv;
   })();
 
-  if (!cvPayload?.url || !cvPayload?.publicId) {
+  if (!cvPayload?.url) {
     return res.status(400).json({ message: "CV upload is required" });
   }
 
