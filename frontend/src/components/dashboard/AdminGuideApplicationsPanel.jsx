@@ -223,26 +223,36 @@ const AdminGuideApplicationsPanel = () => {
   const buildCvHref = (cv = {}, fallbackUrl) => {
     const baseUrl = cv.url || fallbackUrl;
     if (!baseUrl) return null;
-    if (!baseUrl.includes("/upload/")) return baseUrl;
+    const isCloudinary = baseUrl.includes("res.cloudinary.com") && baseUrl.includes("/upload/");
+    if (!isCloudinary || baseUrl.includes("fl_attachment:")) return baseUrl;
 
-    const deriveName = () => {
-      if (cv.originalFilename) return cv.originalFilename;
-      try {
-        const last = decodeURIComponent(new URL(baseUrl).pathname.split("/").pop() || "");
-        if (last && last.includes(".") && !last.endsWith(".")) return last;
-      } catch {
-        /* ignore */
-      }
-      if (cv.publicId) {
-        const tail = cv.publicId.split("/").pop() || cv.publicId;
-        if (tail && tail.includes(".") && !tail.endsWith(".")) return tail;
-      }
-      if (cv.format) return `cv.${(cv.format || "").split("/").pop()}`;
-      return "cv.pdf";
-    };
+    const uploadSegment = baseUrl.includes("/raw/upload/") ? "/raw/upload/" : "/upload/";
+    const ext = (cv.format || "").split("/").pop() || "pdf";
+    const rawName =
+      cv.originalFilename ||
+      (() => {
+        try {
+          return decodeURIComponent(new URL(baseUrl).pathname.split("/").pop() || "");
+        } catch {
+          return "";
+        }
+      })() ||
+      cv.publicId ||
+      "cv";
 
-    const encoded = encodeURIComponent(deriveName());
-    return baseUrl.replace("/upload/", `/upload/fl_attachment:${encoded}/`);
+    const baseName = rawName.replace(/\.[^/.]+$/, "");
+    const safeBase = baseName.replace(/[^a-z0-9_-]/gi, "_") || "cv";
+    const safeExt = (ext || "").replace(/[^a-z0-9]/gi, "") || "pdf";
+
+    const withAttachmentFlag = baseUrl.replace(uploadSegment, `${uploadSegment}fl_attachment:${safeBase}/`);
+    try {
+      const url = new URL(withAttachmentFlag);
+      const filename = `${safeBase}.${safeExt}`;
+      url.searchParams.set("response-content-disposition", `attachment; filename=\"${filename}\"`);
+      return url.toString();
+    } catch {
+      return withAttachmentFlag;
+    }
   };
 
   const updateStatus = (id, nextStatus, notes) => {

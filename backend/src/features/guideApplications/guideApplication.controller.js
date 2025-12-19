@@ -15,10 +15,12 @@ export const applyForGuide = asyncHandler(async (req, res) => {
   const cvPayload = (() => {
     if (req.file) {
       const url = req.file.secure_url || req.file.path || req.file.url;
-      const publicId = req.file.public_id || req.file.filename || null;
       const size = req.file.bytes || req.file.size;
-      const format = req.file.format || req.file.mimetype;
       const original = req.file.originalname || req.file.original_filename;
+      const extFromOriginal = (original?.split(".").pop() || "").toLowerCase();
+      const mimeExt = (req.file.mimetype || "").split("/").pop();
+      const format = req.file.format || extFromOriginal || mimeExt;
+      const publicId = req.file.public_id || req.file.filename || url?.split("/")?.pop() || null;
       return {
         url,
         publicId,
