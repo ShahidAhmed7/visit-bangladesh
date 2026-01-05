@@ -5,6 +5,7 @@ export const applyGuideSchema = Joi.object({
   yearsOfExperience: Joi.number().min(0),
   languages: Joi.array().items(Joi.string().trim()),
   regions: Joi.array().items(Joi.string().trim()),
+  specialties: Joi.array().items(Joi.string().trim()),
   cv: Joi.object({
     url: Joi.string().uri().required(),
     publicId: Joi.string().trim().required(),

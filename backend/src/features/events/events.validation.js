@@ -26,9 +26,20 @@ export const updateEventSchema = Joi.object({
   startDate: Joi.date().optional(),
   endDate: Joi.date().optional(),
   location: Joi.alternatives().try(locationShape, Joi.string()).optional(),
-  status: Joi.string().valid("pending", "approved", "rejected").optional(),
+  status: Joi.string().valid("pending", "approved", "rejected", "canceled").optional(),
 });
 
 export const commentSchema = Joi.object({
   text: Joi.string().min(1).max(1000).required(),
+});
+
+export const registrationSchema = Joi.object({
+  fullName: Joi.string().min(2).max(120).required(),
+  email: Joi.string().email().required(),
+  contactNumber: Joi.string().min(6).max(30).required(),
+  age: Joi.number().integer().min(1).max(120).required(),
+  sex: Joi.string().valid("male", "female", "other").required(),
+  peopleCount: Joi.number().integer().min(1).max(5).required(),
+  nidNumber: Joi.string().min(4).max(50).required(),
+  termsAccepted: Joi.boolean().valid(true).required(),
 });

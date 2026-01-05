@@ -29,9 +29,12 @@ const HeroSection = () => {
             a memory — rich, colorful, and unforgettable.
           </p>
           <div className="flex flex-wrap gap-3">
-            <button className="rounded-full bg-emerald-600 px-5 py-3 text-sm font-semibold text-white shadow-md transition hover:bg-emerald-700">
+            <Link
+              to="/events"
+              className="rounded-full bg-emerald-600 px-5 py-3 text-sm font-semibold text-white shadow-md transition hover:bg-emerald-700"
+            >
               Start Planning
-            </button>
+            </Link>
             <Link
               to="/spots"
               className="rounded-full border border-emerald-200 px-5 py-3 text-sm font-semibold text-emerald-700 transition hover:border-emerald-400 hover:text-emerald-800"

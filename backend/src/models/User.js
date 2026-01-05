@@ -17,6 +17,7 @@ const UserSchema = new Schema(
       country: { type: String, trim: true },
     },
     favorites: [{ type: Schema.Types.ObjectId, ref: "TouristSpot" }],
+    followingGuides: [{ type: Schema.Types.ObjectId, ref: "GuideApplication" }],
   },
   { timestamps: true }
 );

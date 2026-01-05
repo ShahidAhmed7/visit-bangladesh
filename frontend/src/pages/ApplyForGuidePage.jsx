@@ -129,6 +129,7 @@ const ApplyForGuidePage = () => {
       payload.append("yearsOfExperience", form.years);
       form.languages.forEach((lang) => payload.append("languages[]", lang));
       form.regions.forEach((region) => payload.append("regions[]", region));
+      form.specialties.forEach((specialty) => payload.append("specialties[]", specialty));
       payload.append("cv", upload.file);
 
       const res = await guideApplicationsAPI.apply(payload);

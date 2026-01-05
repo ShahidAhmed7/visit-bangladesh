@@ -59,13 +59,18 @@ const swaggerDoc = {
     },
     "/api/spots": {
       get: {
-        summary: "List tourist spots (public)",
+        summary: "List tourist spots (public) with search, filters, sort and pagination",
         parameters: [
-          { name: "category", in: "query", schema: { type: "string" } },
+          { name: "q", in: "query", schema: { type: "string" }, description: "Keyword search (name/description)" },
+          { name: "categories", in: "query", schema: { type: "string" }, description: "Comma-separated categories e.g. 'Nature,Beach'" },
           { name: "division", in: "query", schema: { type: "string" } },
           { name: "district", in: "query", schema: { type: "string" } },
+          { name: "minRating", in: "query", schema: { type: "number", minimum: 0, maximum: 5 } },
+          { name: "sort", in: "query", schema: { type: "string", enum: ["rating_desc", "newest", "most_reviewed"] } },
+          { name: "page", in: "query", schema: { type: "integer", default: 1 } },
+          { name: "limit", in: "query", schema: { type: "integer", default: 12 } },
         ],
-        responses: { 200: { description: "Array of spots", content: { "application/json": { schema: { type: "array", items: { $ref: "#/components/schemas/Spot" } } } } } },
+        responses: { 200: { description: "Array of spots with meta", content: { "application/json": { schema: { type: "object", properties: { data: { type: "array", items: { $ref: "#/components/schemas/Spot" } }, meta: { type: "object" } } } } } } },
       },
     },
     "/api/spots/{id}": {
@@ -215,6 +220,9 @@ const swaggerDoc = {
           },
           images: { type: "array", items: { type: "string" } },
           googleMapsUrl: { type: "string" },
+          avgRating: { type: "number" },
+          reviewCount: { type: "number" },
+          createdAt: { type: "string", format: "date-time" },
         },
       },
       Blog: {

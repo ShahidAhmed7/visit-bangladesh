@@ -6,47 +6,28 @@ import { Link } from "react-router-dom";
 import Navbar from "../components/Navbar.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 import { usersAPI } from "../services/api/users.api.js";
+import { guidesAPI } from "../services/api/guides.api.js";
+import { eventsAPI } from "../services/api/events.api.js";
+import { spotsAPI } from "../services/api/spots.api.js";
 import { guideApplicationsAPI } from "../services/api/guideApplications.api.js";
-import BookingsSection from "../components/dashboard/BookingsSection.jsx";
 import BookmarksSection from "../components/dashboard/BookmarksSection.jsx";
 import BlogCardsSection from "../components/dashboard/BlogCardsSection.jsx";
 import GuidesSection from "../components/dashboard/GuidesSection.jsx";
 import OverviewCard from "../components/dashboard/OverviewCard.jsx";
 import PasswordForm from "../components/dashboard/PasswordForm.jsx";
 import ProfileForm from "../components/dashboard/ProfileForm.jsx";
+import RegisteredSection from "../components/dashboard/RegisteredSection.jsx";
 import ReviewsSection from "../components/dashboard/ReviewsSection.jsx";
 import SidebarNav from "../components/dashboard/SidebarNav.jsx";
 import StatCard from "../components/dashboard/StatCard.jsx";
 import AdminUsersSection from "../components/dashboard/AdminUsersSection.jsx";
 import ConfirmModal from "../components/dashboard/ConfirmModal.jsx";
 import AdminGuideApplicationsPanel from "../components/dashboard/AdminGuideApplicationsPanel.jsx";
+import AdminPendingGuideEventsPanel from "../components/dashboard/AdminPendingGuideEventsPanel.jsx";
 
 const travelPrefs = ["Nature", "Heritage", "Beach", "Hill", "Spiritual"];
 
-const dummyBookmarks = {
-  spots: [
-    { id: "s1", name: "Cox’s Bazar Sea Beach", category: "Beach", district: "Cox's Bazar", division: "Chattogram", rating: 4.8, image: "/assets/images/tour-img01.jpg" },
-    { id: "s2", name: "Sreemangal Tea Gardens", category: "Nature", district: "Moulvibazar", division: "Sylhet", rating: 4.6, image: "/assets/images/tour-img03.jpg" },
-  ],
-  hotels: [
-    { id: "h1", name: "Bayview Resort", location: "Cox's Bazar", rating: 4.5, link: "#" },
-    { id: "h2", name: "Tea Valley Lodge", location: "Sreemangal", rating: 4.4, link: "#" },
-  ],
-  guides: [
-    { id: "g1", name: "Rahim Uddin", city: "Sylhet", languages: ["Bangla", "English"], rating: 4.7, avatar: "" },
-    { id: "g2", name: "Farhana Akter", city: "Dhaka", languages: ["Bangla", "English", "Hindi"], rating: 4.8, avatar: "" },
-  ],
-};
-
-const dummyBookings = [
-  { id: "b1", hotel: "Bayview Resort", destination: "Cox's Bazar", checkIn: "2025-12-20", checkOut: "2025-12-24", status: "Confirmed" },
-  { id: "b2", hotel: "Tea Valley Lodge", destination: "Sreemangal", checkIn: "2026-01-05", checkOut: "2026-01-07", status: "Pending" },
-];
-
-const dummyReviews = [
-  { id: "r1", target: "Cox’s Bazar Sea Beach", type: "Spot", rating: 5, date: "2025-11-01", text: "Incredible sunsets and long walks along the shore. Highly recommend!" },
-  { id: "r2", target: "Bayview Resort", type: "Hotel", rating: 4, date: "2025-10-15", text: "Comfortable stay with sea view. Breakfast could be better." },
-];
+const emptyBookmarks = { spots: [], events: [] };
 
 const dummyBlogs = [
   { id: "b1", title: "Sunrise at Cox’s Bazar", snippet: "The golden light reflecting off the waves was surreal...", createdAt: "2025-12-05", likes: 8, comments: 2 },
@@ -68,13 +49,14 @@ const ProfilePage = () => {
     { key: "overview", label: "Overview", icon: FiGrid, colorClass: "text-emerald-600" },
     { key: "profile", label: "Profile & Settings", icon: HiOutlineUser, colorClass: "text-emerald-600" },
     { key: "bookmarks", label: "Bookmarks", icon: HiOutlineBookmark, colorClass: "text-emerald-600" },
-    { key: "bookings", label: "Bookings", icon: HiOutlineCalendar, colorClass: "text-cyan-600" },
+    { key: "registered", label: "Registered", icon: HiOutlineCalendar, colorClass: "text-cyan-600" },
     { key: "reviews", label: "Reviews", icon: HiOutlineStar, colorClass: "text-amber-600" },
     { key: "guides", label: "Followed Guides", icon: HiOutlineUsers, colorClass: "text-indigo-600" },
   ];
   const adminNavItems = [
     { key: "admin-users", label: "Admin: Users", icon: HiOutlineUsers, colorClass: "text-rose-600" },
     { key: "admin-guide-apps", label: "Admin: Guide Applications", icon: HiOutlineBookmark, colorClass: "text-emerald-700" },
+    { key: "admin-guide-events", label: "Admin: Guide Events", icon: HiOutlineCalendar, colorClass: "text-cyan-600" },
   ];
   const navItems = isAdmin ? [...baseNavItems, ...adminNavItems] : baseNavItems;
   const [active, setActive] = useState("overview");
@@ -93,14 +75,20 @@ const ProfilePage = () => {
   const [passwords, setPasswords] = useState({ currentPassword: "", newPassword: "", confirmPassword: "" });
   const [savingProfile, setSavingProfile] = useState(false);
   const [savingPassword, setSavingPassword] = useState(false);
-  const [bookmarkState, setBookmarkState] = useState(dummyBookmarks);
+  const [bookmarkState, setBookmarkState] = useState(emptyBookmarks);
+  const [followedGuides, setFollowedGuides] = useState([]);
   const [bookmarkTab, setBookmarkTab] = useState("Tourist Spots");
   const [blogs, setBlogs] = useState(dummyBlogs);
+  const [reviews, setReviews] = useState([]);
+  const [registrations, setRegistrations] = useState([]);
+  const [guideRegistrations, setGuideRegistrations] = useState([]);
   const [adminUsers, setAdminUsers] = useState(adminUsersMock);
   const [adminSearch, setAdminSearch] = useState("");
   const [selectedAdminUser, setSelectedAdminUser] = useState(null);
   const [guideApplication, setGuideApplication] = useState(null);
   const [loadingGuideApplication, setLoadingGuideApplication] = useState(false);
+  const [avatarFile, setAvatarFile] = useState(null);
+  const [avatarPreview, setAvatarPreview] = useState("");
   const filteredAdminUsers = useMemo(
     () =>
       adminUsers.filter(
@@ -123,8 +111,17 @@ const ProfilePage = () => {
           country: user.location?.country || "",
         },
       }));
+      setAvatarPreview(user.avatarUrl || "");
     }
   }, [user]);
+
+  useEffect(() => {
+    return () => {
+      if (avatarPreview?.startsWith("blob:")) {
+        URL.revokeObjectURL(avatarPreview);
+      }
+    };
+  }, [avatarPreview]);
 
   useEffect(() => {
     const loadGuideApplication = async () => {
@@ -142,6 +139,76 @@ const ProfilePage = () => {
     };
     loadGuideApplication();
   }, [user, isAdmin, isGuide]);
+
+  useEffect(() => {
+    const loadFollowedGuides = async () => {
+      if (!user) return;
+      try {
+        const res = await usersAPI.getFollowedGuides();
+        const data = res.data?.data?.guides || res.data?.guides || [];
+        setFollowedGuides(Array.isArray(data) ? data : []);
+      } catch (err) {
+        setFollowedGuides([]);
+      }
+    };
+    loadFollowedGuides();
+  }, [user]);
+
+  useEffect(() => {
+    const loadBookmarks = async () => {
+      if (!user) return;
+      try {
+        const res = await usersAPI.getBookmarks();
+        const data = res.data?.data || res.data;
+        setBookmarkState({
+          spots: data?.spots || [],
+          events: data?.events || [],
+        });
+      } catch (err) {
+        setBookmarkState(emptyBookmarks);
+      }
+    };
+    loadBookmarks();
+  }, [user]);
+
+  const fetchReviews = async () => {
+    if (!user) return;
+    try {
+      const res = await usersAPI.getReviews();
+      const data = res.data?.data?.reviews || res.data?.reviews || [];
+      setReviews(Array.isArray(data) ? data : []);
+    } catch (err) {
+      setReviews([]);
+    }
+  };
+
+  useEffect(() => {
+    fetchReviews();
+  }, [user]);
+
+  const loadRegistrations = async () => {
+    if (!user) return;
+    try {
+      if (user.role === "guide") {
+        const res = await eventsAPI.myRegistrations();
+        const data = res.data?.data?.events || res.data?.events || [];
+        setGuideRegistrations(Array.isArray(data) ? data : []);
+        setRegistrations([]);
+      } else {
+        const res = await usersAPI.getRegistrations();
+        const data = res.data?.data?.registrations || res.data?.registrations || [];
+        setRegistrations(Array.isArray(data) ? data : []);
+        setGuideRegistrations([]);
+      }
+    } catch (err) {
+      setRegistrations([]);
+      setGuideRegistrations([]);
+    }
+  };
+
+  useEffect(() => {
+    loadRegistrations();
+  }, [user]);
 
   if (loading) {
     return (
@@ -177,10 +244,12 @@ const ProfilePage = () => {
   }
 
   const stats = {
-    bookmarks: bookmarkState.spots.length + bookmarkState.hotels.length + bookmarkState.guides.length,
-    reviews: dummyReviews.length,
-    bookings: dummyBookings.length,
-    guides: bookmarkState.guides.length,
+    bookmarks: bookmarkState.spots.length + bookmarkState.events.length,
+    reviews: reviews.length,
+    registered: user?.role === "guide"
+      ? guideRegistrations.reduce((sum, event) => sum + (event.registrations?.length || 0), 0)
+      : registrations.length,
+    guides: followedGuides.length,
   };
 
   const requestConfirm = ({ title = "Confirm action", message, confirmText = "Confirm", action }) =>
@@ -194,19 +263,70 @@ const ProfilePage = () => {
     });
   };
 
-  const toggleBookmark = (type, id) => {
-    requestConfirm({
-      title: "Remove bookmark?",
-      message: "This will remove the item from your saved list.",
-      action: () => {
-        setBookmarkState((prev) => ({
-          ...prev,
-          [type]: prev[type].filter((item) => item.id !== id),
-        }));
-        toast.success("Bookmark updated");
-      },
-      confirmText: "Remove",
-    });
+  const toggleBookmark = async (type, id) => {
+    try {
+      if (type === "spots") {
+        await usersAPI.removeSpotBookmark(id);
+      } else if (type === "events") {
+        await eventsAPI.toggleBookmark(id);
+      }
+      setBookmarkState((prev) => ({
+        ...prev,
+        [type]: prev[type].filter((item) => String(item.id ?? item._id) !== String(id)),
+      }));
+      toast.success("Bookmark updated");
+    } catch (err) {
+      const msg = err.response?.data?.message || "Failed to update bookmark";
+      toast.error(msg);
+    }
+  };
+
+  const handleUpdateReview = async (review, updates) => {
+    if (!updates?.rating) {
+      toast.error("Select a rating between 1 and 5.");
+      return false;
+    }
+    if (!updates?.comment || updates.comment.trim().length < 2) {
+      toast.error("Write a short review before saving.");
+      return false;
+    }
+    try {
+      if (review.type === "Spot") {
+        await spotsAPI.updateReview(review.targetId, review.reviewId, updates);
+      } else if (review.type === "Guide") {
+        await guidesAPI.updateReview(review.targetId, review.reviewId, updates);
+      } else {
+        toast.error("Unsupported review type.");
+        return false;
+      }
+      await fetchReviews();
+      toast.success("Review updated");
+      return true;
+    } catch (err) {
+      const msg = err.response?.data?.message || "Failed to update review";
+      toast.error(msg);
+      return false;
+    }
+  };
+
+  const handleDeleteReview = async (review) => {
+    try {
+      if (review.type === "Spot") {
+        await spotsAPI.deleteReview(review.targetId, review.reviewId);
+      } else if (review.type === "Guide") {
+        await guidesAPI.deleteReview(review.targetId, review.reviewId);
+      } else {
+        toast.error("Unsupported review type.");
+        return false;
+      }
+      await fetchReviews();
+      toast.success("Review deleted");
+      return true;
+    } catch (err) {
+      const msg = err.response?.data?.message || "Failed to delete review";
+      toast.error(msg);
+      return false;
+    }
   };
 
   const onProfileChange = (e) => {
@@ -219,14 +339,48 @@ const ProfilePage = () => {
     }
   };
 
+  const onAvatarChange = (e) => {
+    const file = e.target.files?.[0];
+    if (avatarPreview?.startsWith("blob:")) {
+      URL.revokeObjectURL(avatarPreview);
+    }
+    if (file) {
+      setAvatarFile(file);
+      setAvatarPreview(URL.createObjectURL(file));
+    } else {
+      setAvatarFile(null);
+      setAvatarPreview(user?.avatarUrl || "");
+    }
+  };
+
   const onSaveProfile = async (e) => {
     e.preventDefault();
     setSavingProfile(true);
     try {
-      const payload = { ...profile, preferences: Array.from(profile.preferences) };
+      const basePayload = { ...profile, preferences: Array.from(profile.preferences) };
+      let payload = basePayload;
+
+      if (avatarFile) {
+        payload = new FormData();
+        payload.append("avatar", avatarFile);
+        payload.append("name", profile.name);
+        if (profile.phone) payload.append("phone", profile.phone);
+        if (profile.bio) payload.append("bio", profile.bio);
+        if (profile.location?.city || profile.location?.country) {
+          payload.append("location", JSON.stringify(profile.location));
+        }
+      } else {
+        if (!basePayload.avatarUrl) {
+          delete basePayload.avatarUrl;
+        }
+        payload = basePayload;
+      }
+
       const res = await usersAPI.updateProfile(payload);
       const updatedUser = res.data?.data || res.data;
       setUser(updatedUser);
+      setAvatarFile(null);
+      setAvatarPreview(updatedUser?.avatarUrl || "");
       toast.success("Profile updated");
     } catch (err) {
       const msg = err.response?.data?.message || "Failed to update profile";
@@ -282,7 +436,7 @@ const ProfilePage = () => {
             user={user}
             profile={profile}
             stats={stats}
-            statsIcons={{ bookmarks: HiOutlineBookmark, reviews: HiOutlineStar, bookings: HiOutlineCalendar, guides: HiOutlineUsers }}
+            statsIcons={{ bookmarks: HiOutlineBookmark, reviews: HiOutlineStar, registered: HiOutlineCalendar, guides: HiOutlineUsers }}
           />
           {!isAdmin && !isGuide ? (
             <GuideApplicationStatusCard application={guideApplication} loading={loadingGuideApplication} />
@@ -329,16 +483,60 @@ const ProfilePage = () => {
             travelPrefs={travelPrefs}
             logout={logout}
             disabled={!editMode}
+            avatarPreview={avatarPreview}
+            onAvatarChange={onAvatarChange}
           >
             <PasswordForm passwords={passwords} setPasswords={setPasswords} saving={savingPassword} onSave={onSavePassword} />
           </ProfileForm>
         </div>
       );
     if (active === "bookmarks")
-      return <BookmarksSection bookmarkTab={bookmarkTab} setBookmarkTab={setBookmarkTab} bookmarkState={bookmarkState} toggleBookmark={toggleBookmark} />;
-    if (active === "bookings") return <BookingsSection bookings={dummyBookings} />;
-    if (active === "reviews") return <ReviewsSection reviews={dummyReviews} />;
-    if (active === "guides") return <GuidesSection guides={bookmarkState.guides} />;
+      return (
+        <BookmarksSection
+          bookmarkTab={bookmarkTab}
+          setBookmarkTab={setBookmarkTab}
+          bookmarkState={bookmarkState}
+          toggleBookmark={toggleBookmark}
+          requestConfirm={requestConfirm}
+        />
+      );
+    if (active === "registered")
+      return (
+        <RegisteredSection
+          role={user?.role}
+          registrations={registrations}
+          guideEvents={guideRegistrations}
+          onRefresh={loadRegistrations}
+        />
+      );
+    if (active === "reviews") return <ReviewsSection reviews={reviews} onUpdate={handleUpdateReview} onDelete={handleDeleteReview} />;
+    if (active === "guides")
+      return (
+        <GuidesSection
+          guides={followedGuides}
+          onUnfollow={(guide) => {
+            if (!guide?.id) return;
+            requestConfirm({
+              title: "Unfollow guide?",
+              message: `Stop following ${guide.name || "this guide"}?`,
+              confirmText: "Unfollow",
+              action: async () => {
+                try {
+                  await guidesAPI.unfollow(guide.id);
+                  setFollowedGuides((prev) => prev.filter((g) => g.id !== guide.id));
+                  setBookmarkState((prev) =>
+                    Array.isArray(prev.guides) ? { ...prev, guides: prev.guides.filter((g) => g.id !== guide.id) } : prev
+                  );
+                  toast.success("Unfollowed guide");
+                } catch (err) {
+                  const msg = err.response?.data?.message || "Failed to unfollow";
+                  toast.error(msg);
+                }
+              },
+            });
+          }}
+        />
+      );
     if (active === "admin-users")
       return (
         <AdminUsersSection
@@ -353,6 +551,7 @@ const ProfilePage = () => {
         />
       );
     if (active === "admin-guide-apps") return <AdminGuideApplicationsPanel />;
+    if (active === "admin-guide-events") return <AdminPendingGuideEventsPanel />;
     return null;
   };
 
@@ -362,8 +561,12 @@ const ProfilePage = () => {
       <main className="mx-auto flex max-w-6xl flex-col gap-6 px-4 pb-16 pt-24 md:px-6 md:pt-28 md:flex-row">
         <aside className="w-full md:w-72 space-y-4 rounded-3xl bg-white p-5 shadow-xl ring-1 ring-emerald-100">
           <div className="flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-600 text-lg font-bold text-white shadow-sm">
-              {user?.name?.[0]?.toUpperCase() || "U"}
+            <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-emerald-600 text-lg font-bold text-white shadow-sm">
+              {user?.avatarUrl ? (
+                <img src={user.avatarUrl} alt="Profile" className="h-full w-full object-cover" />
+              ) : (
+                user?.name?.[0]?.toUpperCase() || "U"
+              )}
             </div>
             <div>
               <div className="text-sm font-bold text-slate-900">{user?.name}</div>
@@ -376,7 +579,7 @@ const ProfilePage = () => {
           <div className="grid grid-cols-2 gap-2 text-xs font-semibold text-slate-700">
             <StatCard icon={HiOutlineBookmark} label="Bookmarks" value={stats.bookmarks} />
             <StatCard icon={HiOutlineStar} label="Reviews" value={stats.reviews} />
-            <StatCard icon={HiOutlineCalendar} label="Bookings" value={stats.bookings} />
+            <StatCard icon={HiOutlineCalendar} label="Registered" value={stats.registered} />
             <StatCard icon={HiOutlineUsers} label="Guides" value={stats.guides} />
           </div>
           <SidebarNav items={navItems} active={active} onChange={setActive} />

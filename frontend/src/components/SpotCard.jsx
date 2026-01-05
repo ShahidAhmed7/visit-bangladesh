@@ -8,9 +8,10 @@ const truncate = (text = "", length = 80) =>
 const SpotCard = ({ spot }) => {
   if (!spot) return null;
   const navigate = useNavigate();
-  const { _id, name, category, location, images = [], description, googleMapsUrl } = spot;
+  const { _id, name, category, location, images = [], description, googleMapsUrl, avgRating, reviewCount } = spot;
   const imageSrc = resolveSpotImage(images[0]);
   const locationText = [location?.district, location?.division].filter(Boolean).join(", ");
+  const ratingText = avgRating ? `${avgRating.toFixed(1)} (${reviewCount || 0})` : null;
 
   return (
     <div
@@ -57,6 +58,9 @@ const SpotCard = ({ spot }) => {
         ) : null}
         {description ? (
           <p className="text-sm text-slate-600">{truncate(description, 90)}</p>
+        ) : null}
+        {ratingText ? (
+          <div className="mt-2 text-sm text-slate-700">⭐ {ratingText}</div>
         ) : null}
         <div className="mt-auto pt-2">
           <span className="inline-flex items-center justify-center rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700">

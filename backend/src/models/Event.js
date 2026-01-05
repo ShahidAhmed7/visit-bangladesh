@@ -32,7 +32,7 @@ const EventSchema = new Schema(
     createdBy: { type: Schema.Types.ObjectId, ref: "User", required: true },
     status: {
       type: String,
-      enum: ["pending", "approved", "rejected"],
+      enum: ["pending", "approved", "rejected", "canceled"],
       default: "pending",
     },
     interestedUsers: [{ type: Schema.Types.ObjectId, ref: "User" }],

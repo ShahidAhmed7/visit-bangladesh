@@ -6,9 +6,11 @@ import Navbar from "../components/Navbar.jsx";
 import Footer from "../components/Footer.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 import { eventsAPI } from "../services/api/events.api.js";
-import { formatDate } from "../utils/format.js";
+import { formatDate, getEventStatus } from "../utils/format.js";
 import { resolveBlogImage } from "../utils/resolveSpotImage.js";
 import ConfirmModal from "../components/dashboard/ConfirmModal.jsx";
+import { usersAPI } from "../services/api/users.api.js";
+import ChatPanel from "../components/chat/ChatPanel.jsx";
 
 const typeMeta = {
   tour: { label: "Tour Event", pill: "bg-emerald-50 text-emerald-700", icon: HiOutlineSparkles },
@@ -19,6 +21,7 @@ const statusMeta = {
   approved: { label: "Approved", className: "bg-emerald-50 text-emerald-700 ring-emerald-100" },
   pending: { label: "Pending", className: "bg-amber-50 text-amber-700 ring-amber-100" },
   rejected: { label: "Rejected", className: "bg-rose-50 text-rose-700 ring-rose-100" },
+  canceled: { label: "Canceled", className: "bg-slate-100 text-slate-700 ring-slate-200" },
 };
 
 const badge = (meta) => `inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold shadow-sm ring-1 ${meta}`;
@@ -31,6 +34,21 @@ const EventDetailPage = () => {
   const [loading, setLoading] = useState(true);
   const [commentText, setCommentText] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [showRegister, setShowRegister] = useState(false);
+  const [registering, setRegistering] = useState(false);
+  const [isRegistered, setIsRegistered] = useState(false);
+  const [showChat, setShowChat] = useState(false);
+  const [activeChatId, setActiveChatId] = useState("");
+  const [registerForm, setRegisterForm] = useState({
+    fullName: "",
+    email: "",
+    contactNumber: "",
+    age: "",
+    sex: "",
+    peopleCount: 1,
+    nidNumber: "",
+    termsAccepted: false,
+  });
 
   const cover = resolveBlogImage(event?.imageUrl);
   const meta = typeMeta[event?.eventType] || typeMeta.tour;
@@ -39,6 +57,8 @@ const EventDetailPage = () => {
   const isCreator = user && event?.createdBy && String(event.createdBy._id || event.createdBy.id) === String(user.id);
   const canView = event?.status === "approved" || isAdmin || isCreator;
   const [confirmAction, setConfirmAction] = useState(null);
+  const eventStatus = getEventStatus(event?.startDate, event?.endDate);
+  const canRegister = eventStatus === "upcoming" && event?.status === "approved";
 
   useEffect(() => {
     const fetchEvent = async () => {
@@ -53,6 +73,33 @@ const EventDetailPage = () => {
     };
     fetchEvent();
   }, [id]);
+
+  useEffect(() => {
+    if (!user) return;
+    setRegisterForm((prev) => ({
+      ...prev,
+      fullName: prev.fullName || user.name || "",
+      email: prev.email || user.email || "",
+    }));
+  }, [user]);
+
+  useEffect(() => {
+    const loadRegistrationState = async () => {
+      if (!user || !event?._id) {
+        setIsRegistered(false);
+        return;
+      }
+      try {
+        const res = await usersAPI.getRegistrations();
+        const items = res.data?.data?.registrations || res.data?.registrations || [];
+        const match = items.some((item) => String(item.event?.id || item.event?._id) === String(event._id));
+        setIsRegistered(match);
+      } catch (err) {
+        setIsRegistered(false);
+      }
+    };
+    loadRegistrationState();
+  }, [user, event?._id]);
 
   const isInterested = useMemo(() => {
     if (!event || !user) return false;
@@ -114,6 +161,60 @@ const EventDetailPage = () => {
     }
   };
 
+  const handleRegisterSubmit = async (eventObj) => {
+    eventObj.preventDefault();
+    if (!user) {
+      toast.error("Please log in to register.");
+      navigate("/login");
+      return;
+    }
+    const payload = {
+      fullName: registerForm.fullName.trim(),
+      email: registerForm.email.trim(),
+      contactNumber: registerForm.contactNumber.trim(),
+      age: Number(registerForm.age),
+      sex: registerForm.sex,
+      peopleCount: Number(registerForm.peopleCount),
+      nidNumber: registerForm.nidNumber.trim(),
+      termsAccepted: registerForm.termsAccepted,
+    };
+    if (
+      !payload.fullName ||
+      !payload.email ||
+      !payload.contactNumber ||
+      !payload.age ||
+      !payload.sex ||
+      !payload.peopleCount ||
+      !payload.nidNumber
+    ) {
+      toast.error("Please fill out all fields.");
+      return;
+    }
+    if (payload.peopleCount < 1 || payload.peopleCount > 5) {
+      toast.error("People count must be between 1 and 5.");
+      return;
+    }
+    if (!payload.termsAccepted) {
+      toast.error("You must agree to the terms and conditions.");
+      return;
+    }
+    setRegistering(true);
+    try {
+      const res = await eventsAPI.register(id, payload);
+      toast.success("Registration submitted.");
+      setIsRegistered(true);
+      setShowRegister(false);
+      const chatThreadId = res.data?.data?.chatThreadId || res.data?.chatThreadId || "";
+      setActiveChatId(chatThreadId);
+      setShowChat(true);
+    } catch (err) {
+      const msg = err.response?.data?.message || "Failed to register.";
+      toast.error(msg);
+    } finally {
+      setRegistering(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-white text-slate-900">
@@ -158,67 +259,6 @@ const EventDetailPage = () => {
   return (
     <div className="min-h-screen bg-white text-slate-900">
       <Navbar />
-      {(isAdmin || isCreator) && (
-        <div
-          className={`px-4 py-2 text-sm font-semibold text-white ${
-            event.status === "pending"
-              ? "bg-gradient-to-r from-amber-500 to-orange-500"
-              : event.status === "rejected"
-              ? "bg-rose-600"
-              : "bg-emerald-600"
-          }`}
-        >
-          <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3">
-            <span>
-              {event.status === "pending"
-                ? "Pending Event — Review Required"
-                : event.status === "rejected"
-                ? "Rejected Event — Not visible publicly"
-                : "Approved Event — Live"}
-            </span>
-            {isAdmin ? (
-              <div className="flex gap-2">
-                {event.status !== "approved" ? (
-                  <button
-                    onClick={() =>
-                      setConfirmAction({
-                        title: "Approve event",
-                        message: "Make this event live for all users?",
-                        confirmText: "Approve",
-                        action: () => handleApprove("approve"),
-                      })
-                    }
-                    className="rounded-full bg-white/20 px-3 py-1 shadow-sm hover:bg-white/30"
-                  >
-                    Approve
-                  </button>
-                ) : null}
-                {event.status !== "rejected" ? (
-                  <button
-                    onClick={() =>
-                      setConfirmAction({
-                        title: "Reject event",
-                        message: "Reject and hide this event?",
-                        confirmText: "Reject",
-                        action: () => handleApprove("reject"),
-                      })
-                    }
-                    className="rounded-full bg-white/20 px-3 py-1 shadow-sm hover:bg-white/30"
-                  >
-                    Reject
-                  </button>
-                ) : null}
-                <button
-                  onClick={() => navigate(`/events/${id}/edit`)}
-                  className="rounded-full bg-white/20 px-3 py-1 shadow-sm hover:bg-white/30"
-                >
-                  Edit
-                </button>
-              </div>
-            ) : null}
-          </div>
-        </div>
-      )}
 
       <main className="mx-auto max-w-6xl px-4 pb-16 pt-20 md:px-6 md:pt-24">
         <div className="rounded-3xl bg-gradient-to-r from-emerald-50 to-cyan-50 p-4 shadow-md md:p-6">
@@ -238,6 +278,47 @@ const EventDetailPage = () => {
                 <span className={badge(status.className)}>{status.label}</span>
               </div>
               <h1 className="text-3xl font-bold text-slate-900 md:text-4xl">{event.title}</h1>
+              <div className="flex flex-wrap items-center gap-3">
+                {canRegister ? (
+                  <button
+                    onClick={() => {
+                      if (!user) {
+                        toast.error("Please log in to register.");
+                        navigate("/login");
+                        return;
+                      }
+                      if (!isRegistered) {
+                        setShowRegister(true);
+                      }
+                    }}
+                    disabled={isRegistered}
+                    className={`inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold shadow-md transition ${
+                      isRegistered
+                        ? "bg-emerald-100 text-emerald-700"
+                        : "bg-emerald-700 text-white hover:bg-emerald-800"
+                    }`}
+                  >
+                    {isRegistered ? (
+                      <>
+                        <HiCheckCircle className="h-4 w-4" />
+                        Already registered
+                      </>
+                    ) : (
+                      <>
+                        <HiOutlineCalendar className="h-4 w-4" />
+                        Register for the event
+                      </>
+                    )}
+                  </button>
+                ) : (
+                  <span className="rounded-full bg-slate-100 px-4 py-2 text-xs font-semibold text-slate-600">
+                    Registration available for upcoming events only
+                  </span>
+                )}
+                <span className="text-xs font-semibold text-slate-500">
+                  {eventStatus === "ongoing" ? "Ongoing event" : eventStatus === "done" ? "Event completed" : "Upcoming event"}
+                </span>
+              </div>
               <div className="flex flex-wrap items-center gap-3 text-sm font-semibold text-slate-700">
                 <span className="inline-flex items-center gap-2 text-emerald-700">
                   <HiLocationMarker className="h-5 w-5" />
@@ -491,7 +572,14 @@ const EventDetailPage = () => {
                   <p className="font-semibold text-slate-900">Organizer</p>
                   <p className="text-sm text-slate-700">{event.createdBy?.name || "Unknown"}</p>
                   <p className="text-xs text-slate-500">{event.createdBy?.role || "Guide"}</p>
-                  <button className="mt-2 text-sm font-semibold text-sky-600 hover:underline">View more tours from this guide</button>
+                  {event.createdByGuideId ? (
+                    <button
+                      onClick={() => navigate(`/guides/${event.createdByGuideId}`)}
+                      className="mt-2 text-sm font-semibold text-sky-600 hover:underline"
+                    >
+                      View more tours from this guide
+                    </button>
+                  ) : null}
                 </div>
               </div>
             </section>
@@ -525,6 +613,138 @@ const EventDetailPage = () => {
         onConfirm={() => confirmAction?.action?.()}
         onClose={() => setConfirmAction(null)}
       />
+      <ChatPanel open={showChat} onClose={() => setShowChat(false)} user={user} initialThreadId={activeChatId} />
+      {showRegister ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">Event Registration</p>
+                <h3 className="text-2xl font-bold text-slate-900">Register for this event</h3>
+              </div>
+              <button
+                onClick={() => setShowRegister(false)}
+                className="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-600"
+              >
+                Close
+              </button>
+            </div>
+            <form onSubmit={handleRegisterSubmit} className="mt-4 space-y-4">
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-slate-600">Full name</label>
+                  <input
+                    value={registerForm.fullName}
+                    onChange={(e) => setRegisterForm((prev) => ({ ...prev, fullName: e.target.value }))}
+                    className="w-full rounded-2xl border border-emerald-100 px-3 py-2 text-sm"
+                    required
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-slate-600">Email</label>
+                  <input
+                    type="email"
+                    value={registerForm.email}
+                    onChange={(e) => setRegisterForm((prev) => ({ ...prev, email: e.target.value }))}
+                    className="w-full rounded-2xl border border-emerald-100 px-3 py-2 text-sm"
+                    required
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-slate-600">Contact number</label>
+                  <input
+                    value={registerForm.contactNumber}
+                    onChange={(e) => setRegisterForm((prev) => ({ ...prev, contactNumber: e.target.value }))}
+                    className="w-full rounded-2xl border border-emerald-100 px-3 py-2 text-sm"
+                    required
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-slate-600">Age</label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="120"
+                    value={registerForm.age}
+                    onChange={(e) => setRegisterForm((prev) => ({ ...prev, age: e.target.value }))}
+                    className="w-full rounded-2xl border border-emerald-100 px-3 py-2 text-sm"
+                    required
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-slate-600">Sex</label>
+                  <select
+                    value={registerForm.sex}
+                    onChange={(e) => setRegisterForm((prev) => ({ ...prev, sex: e.target.value }))}
+                    className="w-full rounded-2xl border border-emerald-100 px-3 py-2 text-sm"
+                    required
+                  >
+                    <option value="">Select</option>
+                    <option value="male">Male</option>
+                    <option value="female">Female</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-slate-600">How many people (max 5)</label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="5"
+                    value={registerForm.peopleCount}
+                    onChange={(e) => setRegisterForm((prev) => ({ ...prev, peopleCount: e.target.value }))}
+                    className="w-full rounded-2xl border border-emerald-100 px-3 py-2 text-sm"
+                    required
+                  />
+                </div>
+                <div className="space-y-1 md:col-span-2">
+                  <label className="text-xs font-semibold text-slate-600">NID number</label>
+                  <input
+                    value={registerForm.nidNumber}
+                    onChange={(e) => setRegisterForm((prev) => ({ ...prev, nidNumber: e.target.value }))}
+                    className="w-full rounded-2xl border border-emerald-100 px-3 py-2 text-sm"
+                    required
+                  />
+                </div>
+              </div>
+              <div className="rounded-2xl border border-emerald-100 bg-emerald-50/40 p-4 text-xs text-slate-700">
+                <p className="font-semibold text-emerald-700">Terms and conditions</p>
+                <ul className="mt-2 list-disc space-y-1 pl-4">
+                  <li>Registrations are confirmed only for approved events and may close when capacity is reached.</li>
+                  <li>Please arrive on time and carry a valid ID that matches your registration details.</li>
+                  <li>Respect local culture, the environment, and the guide's safety instructions at all times.</li>
+                  <li>Event schedules may change due to weather or safety concerns; organizers will notify you.</li>
+                  <li>No refunds for no-shows. If you must cancel, inform the organizer early.</li>
+                </ul>
+              </div>
+              <label className="flex items-center gap-2 text-sm text-slate-700">
+                <input
+                  type="checkbox"
+                  checked={registerForm.termsAccepted}
+                  onChange={(e) => setRegisterForm((prev) => ({ ...prev, termsAccepted: e.target.checked }))}
+                />
+                I agree to the terms and conditions
+              </label>
+              <div className="flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowRegister(false)}
+                  className="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={registering}
+                  className="rounded-full bg-emerald-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:opacity-70"
+                >
+                  {registering ? "Registering..." : "Register"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 };

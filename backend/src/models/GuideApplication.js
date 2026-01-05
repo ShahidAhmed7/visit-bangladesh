@@ -10,6 +10,9 @@ const GuideApplicationSchema = new Schema(
     yearsOfExperience: { type: Number, min: 0 },
     languages: [{ type: String, trim: true }],
     regions: [{ type: String, trim: true }],
+    specialties: [{ type: String, trim: true }],
+    avgRating: { type: Number, default: 0 },
+    reviewCount: { type: Number, default: 0 },
     cv: {
       url: { type: String, required: true, trim: true },
       publicId: { type: String, required: true, trim: true },

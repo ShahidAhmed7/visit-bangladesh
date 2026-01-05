@@ -42,3 +42,10 @@ export const attachImages = (req, _res, next) => {
   else delete req.body.images;
   next();
 };
+
+export const attachAvatar = (req, _res, next) => {
+  if (req.file?.path) {
+    req.body.avatarUrl = req.file.path;
+  }
+  next();
+};

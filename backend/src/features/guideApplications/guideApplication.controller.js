@@ -43,6 +43,7 @@ export const applyForGuide = asyncHandler(async (req, res) => {
     yearsOfExperience: req.body.yearsOfExperience,
     languages: req.body.languages,
     regions: req.body.regions,
+    specialties: req.body.specialties,
     cv: cvPayload,
   });
 

@@ -1,6 +1,9 @@
 import BlogService from "./blog.service.js";
+import GuideApplication from "../../models/GuideApplication.js";
+import User from "../../models/User.js";
 import { NotFoundError, ForbiddenError } from "../../shared/errors.js";
 import { asyncHandler, successResponse } from "../../shared/utils.js";
+import { createNotification, createNotificationsForRecipients } from "../notifications/notifications.service.js";
 
 export const createBlog = asyncHandler(async (req, res) => {
   const { title, content, images = [] } = req.body;
@@ -12,6 +15,28 @@ export const createBlog = asyncHandler(async (req, res) => {
     likes: [],
     comments: [],
   });
+  if (req.user.role === "guide") {
+    const guideApp = await GuideApplication.findOne({ userId: req.user.id, status: "approved" })
+      .select("_id")
+      .lean();
+    if (guideApp?._id) {
+      const followers = await User.find({ followingGuides: guideApp._id }).select("_id").lean();
+      const followerIds = followers.map((u) => u._id);
+      await createNotificationsForRecipients(
+        followerIds,
+        {
+          actor: req.user.id,
+          type: "guide_blog_new",
+          title: "New blog post",
+          message: "A guide you follow published a new blog.",
+          link: `/blogs/${blog._id}`,
+          entityType: "blog",
+          entityId: blog._id,
+        },
+        req.user.id
+      );
+    }
+  }
   res.status(201).json(successResponse(blog, "Blog created"));
 });
 
@@ -49,8 +74,24 @@ export const deleteBlog = asyncHandler(async (req, res) => {
 });
 
 export const likeBlog = asyncHandler(async (req, res) => {
+  const before = await BlogService.findById(req.params.id);
+  if (!before) throw new NotFoundError("Blog");
+  const alreadyLiked = (before.likes || []).map(String).includes(String(req.user.id));
   const blog = await BlogService.toggleLike(req.params.id, req.user.id);
   if (!blog) throw new NotFoundError("Blog");
+  const authorId = blog.author?._id || blog.author?.id || blog.author;
+  if (!alreadyLiked && authorId && String(authorId) !== String(req.user.id)) {
+    await createNotification({
+      recipient: authorId,
+      actor: req.user.id,
+      type: "blog_like",
+      title: "New like on your blog",
+      message: "Someone liked your blog post.",
+      link: `/blogs/${blog._id}`,
+      entityType: "blog",
+      entityId: blog._id,
+    });
+  }
   res.json(successResponse(blog));
 });
 
@@ -59,6 +100,19 @@ export const unlikeBlog = likeBlog;
 export const addComment = asyncHandler(async (req, res) => {
   const blog = await BlogService.addComment(req.params.id, req.user.id, req.body.text);
   if (!blog) throw new NotFoundError("Blog");
+  const authorId = blog.author?._id || blog.author?.id || blog.author;
+  if (authorId && String(authorId) !== String(req.user.id)) {
+    await createNotification({
+      recipient: authorId,
+      actor: req.user.id,
+      type: "blog_comment",
+      title: "New comment on your blog",
+      message: "Someone commented on your blog post.",
+      link: `/blogs/${blog._id}`,
+      entityType: "blog",
+      entityId: blog._id,
+    });
+  }
   res.status(201).json(successResponse(blog));
 });
 

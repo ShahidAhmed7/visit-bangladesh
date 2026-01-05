@@ -2,7 +2,7 @@ import mongoose from "mongoose";
 import Event from "../../models/Event.js";
 
 const populateFields = [
-  { path: "createdBy", select: "name email role" },
+  { path: "createdBy", select: "name email phone role" },
   { path: "comments.user", select: "name email role" },
 ];
 

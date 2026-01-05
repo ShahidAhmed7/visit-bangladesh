@@ -48,6 +48,28 @@ Full-stack platform (Express + MongoDB + React/Vite + Tailwind) for browsing spo
 - Seeds: `npm run seed:spots`, `npm run seed:users` (uses data in `src/seed/`)
 - Tests (node:test): `npm test`
 
+### Per-Person Test Commands
+Run from `backend/` and capture terminal screenshots per file:
+```bash
+node --test tests/23101234_event_chat.test.js
+node --test tests/23101234_notifications.test.js
+node --test tests/23101234_apply_guide_role.test.js
+node --test tests/23101234_tours.test.js
+node --test tests/23101234_manage_tours.test.js
+node --test tests/23101017_tourist_spots.test.js
+node --test tests/23101017_event_registration.test.js
+node --test tests/23101017_bookmarking.test.js
+node --test tests/23341007_auth.test.js
+node --test tests/23341007_profile_settings.test.js
+node --test tests/23341007_dashboard.test.js
+node --test tests/23341007_admin_guide_applications.test.js
+node --test tests/23341007_admin_events.test.js
+node --test tests/22301624_blogs.test.js
+node --test tests/22301624_weather.test.js
+node --test tests/22301624_reviews.test.js
+node --test tests/22301624_follow_guides.test.js
+```
+
 ### Key API Areas (prefix `/api`)
 - Auth: `/auth/register`, `/auth/login`, `/auth/me`
 - Spots: `/spots`, `/spots/:id` (public list/read; write requires JWT)
@@ -61,6 +83,37 @@ Full-stack platform (Express + MongoDB + React/Vite + Tailwind) for browsing spo
 - Build: `npm run build`
 - Stack: React, Vite, Tailwind, react-router, react-hot-toast
 - API base: `VITE_API_URL` can be set at build time; defaults to `http://localhost:5000`
+
+---
+
+## Search & Filter API (Spots)
+Server-side search & filter endpoint: `GET /api/spots`
+
+Supported query params:
+- `q` (string) — keyword search on `name` and `description` (uses Mongo $text when available)
+- `categories` (string) — comma-separated; e.g. `Nature,Beach`
+- `division` (string) — division name (partial/case-insensitive)
+- `district` (string) — district name (partial/case-insensitive)
+- `minRating` (number) — minimum `avgRating` threshold (e.g. `4`)
+- `sort` (enum) — `rating_desc`, `newest`, `most_reviewed`
+- `page` (int) — default `1`
+- `limit` (int) — default `12`
+
+Example curl requests:
+
+- Keyword search:
+  curl "http://localhost:5000/api/spots?q=cox"
+
+- Filter by category & min rating:
+  curl "http://localhost:5000/api/spots?categories=Beach,Nature&minRating=4&sort=rating_desc"
+
+- Pagination:
+  curl "http://localhost:5000/api/spots?page=2&limit=6"
+
+Notes:
+- Indexes added to `TouristSpot` model: text index on `name` + `description`, index on `category`, compound index on `location.division` + `location.district`, and indexes on `avgRating` / `reviewCount` for fast sorting.
+- Seed data updated with sample `avgRating` and `reviewCount`. Run `cd backend && npm run seed:spots` to import demo spots.
+
 
 ## Contribution Workflow
 1. Create a feature branch.

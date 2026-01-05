@@ -13,3 +13,30 @@ body {
   font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
   background-color: #f8fafc;
 }
+
+@keyframes weather-fade-up {
+  0% {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.weather-fade-up {
+  animation: weather-fade-up 600ms ease-out both;
+}
+
+.weather-delay-1 {
+  animation-delay: 120ms;
+}
+
+.weather-delay-2 {
+  animation-delay: 220ms;
+}
+
+.weather-delay-3 {
+  animation-delay: 320ms;
+}

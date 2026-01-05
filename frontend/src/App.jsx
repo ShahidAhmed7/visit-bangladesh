@@ -15,6 +15,9 @@ import EventsPage from "./pages/EventsPage.jsx";
 import EventDetailPage from "./pages/EventDetailPage.jsx";
 import EventWizardPage from "./pages/EventWizardPage.jsx";
 import ApplyForGuidePage from "./pages/ApplyForGuidePage.jsx";
+import GuidesPage from "./pages/GuidesPage.jsx";
+import GuideProfilePage from "./pages/GuideProfilePage.jsx";
+import WeatherPage from "./pages/WeatherPage.jsx";
 import { AuthProvider } from "./context/AuthContext.jsx";
 
 const Placeholder = ({ title }) => (
@@ -45,6 +48,9 @@ function App() {
           <Route path="/events/new" element={<EventWizardPage />} />
           <Route path="/events/:id" element={<EventDetailPage />} />
           <Route path="/events/:id/edit" element={<EventWizardPage />} />
+          <Route path="/guides" element={<GuidesPage />} />
+          <Route path="/guides/:id" element={<GuideProfilePage />} />
+          <Route path="/weather" element={<WeatherPage />} />
           <Route path="/apply-guide" element={<ApplyForGuidePage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />

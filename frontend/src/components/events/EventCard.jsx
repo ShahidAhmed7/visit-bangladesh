@@ -1,6 +1,6 @@
 import { HiLocationMarker, HiOutlineBookmark, HiOutlineSparkles } from "react-icons/hi";
 import { useNavigate } from "react-router-dom";
-import { formatDate } from "../../utils/format.js";
+import { formatDate, getEventStatus } from "../../utils/format.js";
 import { resolveBlogImage } from "../../utils/resolveSpotImage.js";
 import Card from "../ui/Card.jsx";
 import Badge from "../ui/Badge.jsx";
@@ -16,6 +16,9 @@ const EventCard = ({ event }) => {
   const cover = resolveBlogImage(event.imageUrl);
   const meta = typeMeta[event.eventType] || typeMeta.tour;
   const Icon = meta.icon;
+  const status = getEventStatus(event.startDate, event.endDate);
+  const statusLabel = status === "ongoing" ? "Ongoing" : status === "done" ? "Done" : "Upcoming";
+  const statusColor = status === "ongoing" ? "amber" : status === "done" ? "slate" : "emerald";
   return (
     <Card
       as="article"
@@ -30,6 +33,9 @@ const EventCard = ({ event }) => {
         )}
         <Badge color={meta.color} className="absolute left-3 top-3 flex items-center gap-1 shadow-sm">
           <Icon className="h-4 w-4" /> {meta.label}
+        </Badge>
+        <Badge color={statusColor} className="absolute right-3 top-3 shadow-sm">
+          {statusLabel}
         </Badge>
       </div>
       <div className="flex flex-1 flex-col gap-2 px-5 py-4">

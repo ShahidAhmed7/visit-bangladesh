@@ -10,8 +10,10 @@ export const eventsAPI = {
   reject: (id) => apiClient.post(`/api/events/${id}/reject`),
   toggleInterested: (id) => apiClient.post(`/api/events/${id}/interested`),
   toggleBookmark: (id) => apiClient.post(`/api/events/${id}/bookmark`),
+  register: (id, data) => apiClient.post(`/api/events/${id}/register`, data),
   addComment: (id, text) => apiClient.post(`/api/events/${id}/comments`, { text }),
   deleteComment: (id, commentId) => apiClient.delete(`/api/events/${id}/comments/${commentId}`),
   myBookmarked: () => apiClient.get("/api/events/me/bookmarked/list"),
   myInterested: () => apiClient.get("/api/events/me/interested/list"),
+  myRegistrations: () => apiClient.get("/api/events/me/registrations"),
 };
